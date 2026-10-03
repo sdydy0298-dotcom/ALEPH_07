@@ -1,0 +1,215 @@
+{
+  "contractVersion": "2.3.0",
+  "application": "PlanDoSee",
+  "timezoneRule": {
+    "businessTimezone": "Asia/Seoul",
+    "delayRule": "A task is delayed only when status is not done and due_date is earlier than the current Asia/Seoul date.",
+    "dailyRecordRule": "daily_records.record_date is assigned by the server using the current Asia/Seoul date; one row per user/date is kept by upsert."
+  },
+  "units": {
+    "estimated_minutes": "minute",
+    "actual_minutes": "minute",
+    "delta_minutes": "minute"
+  },
+  "tables": {
+    "app_users": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "email",
+        "display_name",
+        "password_hash",
+        "failed_attempts",
+        "lock_until",
+        "password_changed_at",
+        "created_at",
+        "updated_at"
+      ],
+      "security": "password_hash stores bcrypt output only; password plaintext is never stored"
+    },
+    "app_sessions": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "user_id",
+        "token_hash",
+        "expires_at",
+        "created_at",
+        "last_seen_at"
+      ],
+      "relations": [
+        "user_id -> app_users.id ON DELETE CASCADE"
+      ],
+      "security": "token_hash stores SHA-256 of the random session token; token plaintext is never stored in DB"
+    },
+    "plans": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "user_id",
+        "current_version_no",
+        "source_review_id",
+        "created_at",
+        "updated_at"
+      ],
+      "relations": [
+        "user_id -> app_users.id ON DELETE CASCADE",
+        "source_review_id -> reviews.id ON DELETE SET NULL"
+      ]
+    },
+    "plan_versions": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "plan_id",
+        "version_no",
+        "title",
+        "start_date",
+        "end_date",
+        "priority",
+        "success_criteria",
+        "estimated_minutes",
+        "carried_improvement",
+        "created_at"
+      ],
+      "relations": [
+        "plan_id -> plans.id ON DELETE CASCADE"
+      ],
+      "unique": [
+        "plan_id + version_no"
+      ]
+    },
+    "tasks": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "plan_id",
+        "title",
+        "description",
+        "due_date",
+        "priority",
+        "tag",
+        "estimated_minutes",
+        "status",
+        "status_version",
+        "deleted_at",
+        "created_at",
+        "updated_at"
+      ],
+      "relations": [
+        "plan_id -> plans.id ON DELETE CASCADE"
+      ],
+      "softDelete": "deleted_at is set instead of physically deleting task history"
+    },
+    "task_status_events": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "task_id",
+        "status_version",
+        "from_status",
+        "to_status",
+        "created_at"
+      ],
+      "relations": [
+        "task_id -> tasks.id ON DELETE CASCADE"
+      ],
+      "unique": [
+        "task_id + status_version"
+      ],
+      "idempotencyRule": "No event is inserted when the requested status equals the current status."
+    },
+    "execution_logs": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "task_id",
+        "started_at",
+        "ended_at",
+        "actual_minutes",
+        "note",
+        "blocker_reason",
+        "created_at"
+      ],
+      "relations": [
+        "task_id -> tasks.id ON DELETE CASCADE"
+      ],
+      "noteRule": "note is an optional free-form work memo; blocker_reason is optional and used only when execution was blocked."
+    },
+    "reviews": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "plan_id",
+        "task_count",
+        "completed_count",
+        "delayed_count",
+        "blocked_count",
+        "estimated_minutes",
+        "actual_minutes",
+        "delta_minutes",
+        "improvement_text",
+        "calculated_at",
+        "updated_at"
+      ],
+      "relations": [
+        "plan_id -> plans.id ON DELETE CASCADE"
+      ],
+      "aggregationRules": {
+        "task_count": "count of tasks where deleted_at is null",
+        "completed_count": "count of active tasks where status = done",
+        "delayed_count": "count of active tasks where status != done and due_date < current Asia/Seoul date",
+        "blocked_count": "count of distinct active tasks that have at least one non-empty blocker_reason",
+        "estimated_minutes": "sum of estimated_minutes of active tasks, or 0",
+        "actual_minutes": "sum of execution_logs.actual_minutes for active tasks, or 0",
+        "delta_minutes": "actual_minutes - estimated_minutes"
+      }
+    },
+    "daily_records": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "user_id",
+        "record_date",
+        "summary",
+        "rule_snapshot",
+        "question",
+        "metric_name",
+        "metric_unit",
+        "metric_value",
+        "calculation_rule",
+        "created_at",
+        "updated_at"
+      ],
+      "relations": [
+        "user_id -> app_users.id ON DELETE CASCADE"
+      ],
+      "unique": [
+        "user_id + record_date"
+      ],
+      "rule": "Exactly five distinct real Asia/Seoul dates are required. The fixed metric is actual work time in minutes. Missing work logs count as 0, duplicate same-day daily records are updated in place, stored values are not clipped as outliers, execution duration is rounded to whole minutes, and the week starts on Monday."
+    },
+    "rule_changes": {
+      "primaryKey": "id",
+      "fields": [
+        "id",
+        "user_id",
+        "day1_record_id",
+        "day2_record_id",
+        "before_rule",
+        "after_rule",
+        "reason",
+        "changed_at"
+      ],
+      "relations": [
+        "user_id -> app_users.id ON DELETE CASCADE",
+        "day1_record_id -> daily_records.id ON DELETE CASCADE",
+        "day2_record_id -> daily_records.id ON DELETE CASCADE"
+      ],
+      "unique": [
+        "user_id"
+      ],
+      "rule": "Insert is allowed only when exactly two daily_records exist. The row stores explicit references to the first and second daily records, so the change is auditable as occurring after day 2 and before day 3."
+    }
+  }
+}

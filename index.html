@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#3563e9">
+  <title>PlanDoSee</title>
+  <meta name="description" content="계획, 할 일, 작업 기록을 한곳에서 관리하세요.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+  <!-- Authentication -->
+  <main id="authShell" class="auth-shell">
+    <section class="auth-brand-panel">
+      <div class="brand-lockup"><span class="brand-mark">P</span><span>PlanDoSee</span></div>
+      <div class="auth-hero">
+        <p class="eyebrow">PLAN · DO · SEE</p>
+        <h1><span>계획부터 기록까지,</span><span>한곳에서.</span></h1>
+        <p>할 일을 정리하고 진행 상황을 확인하세요.<br>작업 기록은 다음 계획의 기준이 됩니다.</p>
+      </div>
+      <div class="auth-feature-grid" aria-label="서비스 특징">
+        <article><span class="auth-feature-icon plan-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 3v3m6-3v3M9 11h6m-6 4h4"/></svg></span><strong>계획</strong><span>목표와 일정 정리</span></article>
+        <article><span class="auth-feature-icon task-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8 12 3 3 5-6"/></svg></span><strong>할 일</strong><span>할 일과 진행 상황 관리</span></article>
+        <article><span class="auth-feature-icon result-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16M8 15v-4m5 4V7m5 8v-6"/></svg></span><strong>결과 보기</strong><span>작업 시간과 결과 확인</span></article>
+      </div>
+      <p class="auth-security-note">내 계정에서 관리하는 계획과 작업 기록</p>
+    </section>
+
+    <section class="auth-form-panel">
+      <div class="auth-card">
+        <div class="auth-card-head">
+          <div class="brand-lockup compact"><span class="brand-mark">P</span><span>PlanDoSee</span></div>
+          <p class="eyebrow" id="authEyebrow">MY WORKSPACE</p>
+          <h2 id="authTitle">로그인</h2>
+          <p id="authDescription">저장한 계획과 작업 기록을 확인하세요.</p>
+        </div>
+        <div class="auth-tabs" role="tablist" aria-label="인증 방식">
+          <button class="auth-tab active" type="button" data-auth-tab="login" role="tab" aria-selected="true">로그인</button>
+          <button class="auth-tab" type="button" data-auth-tab="signup" role="tab" aria-selected="false">회원가입</button>
+        </div>
+        <form id="loginForm" class="auth-form" method="post" autocomplete="on">
+          <label>이메일<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required></label>
+          <label>비밀번호<input name="password" type="password" autocomplete="current-password" placeholder="비밀번호 입력" required></label>
+          <button class="button primary wide" type="submit">로그인</button>
+          <p class="form-message" data-form-message="login"></p>
+        </form>
+        <form id="signupForm" class="auth-form hidden" method="post" autocomplete="on">
+          <label>이름<input name="displayName" type="text" maxlength="40" autocomplete="name" placeholder="이름 또는 닉네임" required></label>
+          <label>이메일<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required></label>
+          <label>비밀번호<input name="password" type="password" autocomplete="new-password" placeholder="12자 이상" required></label>
+          <p class="field-help">영문 대문자·소문자, 숫자, 특수문자를 포함해 12자 이상 입력하세요.</p>
+          <button class="button primary wide" type="submit">회원가입</button>
+          <p class="form-message" data-form-message="signup"></p>
+        </form>
+      </div>
+      <p class="auth-footnote">로그인에 5회 연속 실패하면 10분 후 다시 시도할 수 있습니다.</p>
+    </section>
+  </main>
+
+  <!-- Application -->
+  <div id="appShell" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="sidebar-main">
+        <div class="brand-lockup sidebar-brand"><span class="brand-mark">P</span><span>PlanDoSee</span></div>
+        <nav class="main-nav" aria-label="주요 메뉴">
+          <button class="nav-item active" type="button" data-view="overview">
+            <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span><span>홈</span>
+          </button>
+          <button class="nav-item" type="button" data-view="plan">
+            <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h5"/></svg></span><span>계획</span>
+          </button>
+          <button class="nav-item" type="button" data-view="do">
+            <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 2.2 2.2L16 8.5"/></svg></span><span>할 일</span>
+          </button>
+          <button class="nav-item" type="button" data-view="see">
+            <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18V9M12 18V5M19 18v-6"/></svg></span><span>결과 보기</span>
+          </button>
+        </nav>
+      </div>
+      <div class="sidebar-bottom">
+        <button id="settingsBtn" class="nav-item settings-entry" type="button">
+          <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2H10V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span><span>설정</span>
+        </button>
+        <button class="profile-button" type="button" id="profileButton" aria-label="계정 설정 열기">
+          <span id="profileAvatar" class="avatar">U</span>
+          <span class="profile-copy"><strong id="profileName">사용자</strong><small id="profileEmail">-</small></span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button id="mobileMenuBtn" class="icon-button mobile-only" type="button" aria-label="메뉴 열기">☰</button>
+        <div class="topbar-title"><p id="viewEyebrow" class="eyebrow">TODAY</p><h2 id="viewTitle">홈</h2></div>
+        <div class="topbar-actions"><time id="topbarDate"></time><select id="planSelect" class="hidden" aria-hidden="true" tabindex="-1"></select></div>
+      </header>
+
+      <main class="content-wrap">
+        <!-- HOME -->
+        <section id="view-overview" class="view active">
+          <div id="onboarding" class="onboarding hidden">
+            <div class="onboarding-art" aria-hidden="true"><span></span><span></span><span></span></div>
+            <p class="eyebrow">START HERE</p>
+            <h3>첫 계획 만들기</h3>
+            <p>목표와 기간을 정한 뒤, 필요한 할 일을 추가하세요.</p>
+            <button class="button primary" type="button" data-action="create-plan">첫 계획 만들기</button>
+          </div>
+
+          <div id="homeWorkspace">
+            <div class="home-heading home-welcome">
+              <div>
+                <p class="eyebrow" id="overviewDate">TODAY</p>
+                <h3 id="overviewGreeting">오늘의 할 일</h3>
+                <p id="overviewPlanPeriod">오늘 마감인 할 일과 진행 중인 계획을 확인하세요.</p>
+              </div>
+            </div>
+
+            <section class="today-focus-card">
+              <div class="today-focus-copy">
+                <span class="focus-kicker">오늘 마감</span>
+                <strong><span id="homeFocusRemaining">0</span>개 남음</strong>
+                <div class="focus-progress"><div class="progress-track"><div id="homeFocusProgressFill" class="progress-fill" style="width:0%"></div></div><span id="homeFocusProgressText">0 / 0 완료</span></div>
+                <button id="homeAllTasksBtn" class="button primary compact" type="button">오늘 마감 보기</button>
+              </div>
+              <div class="focus-illustration" aria-hidden="true">
+                <svg viewBox="0 0 180 140"><rect x="42" y="20" width="92" height="104" rx="18" fill="#fff" stroke="#3563e9" stroke-width="4"/><rect x="66" y="8" width="44" height="22" rx="10" fill="#7ca5ff"/><path d="m62 56 8 8 15-18M62 82l8 8 15-18M96 58h22M96 84h22M58 108h62" fill="none" stroke="#3563e9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="142" cy="38" r="14" fill="#ffc597" opacity=".8"/></svg>
+              </div>
+            </section>
+
+            <section class="quick-start-grid" aria-label="빠른 시작">
+              <button class="quick-start-card mint" type="button" data-action="create-plan">
+                <span class="quick-start-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 3v3m6-3v3M9 11h6m-6 4h4"/></svg></span><strong>새 계획</strong><small>목표와 기간을 설정합니다.</small><span class="quick-start-link">계획 만들기</span>
+              </button>
+              <button id="homeQuickTaskBtn" class="quick-start-card sand" type="button">
+                <span class="quick-start-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8m-4-4h8"/></svg></span><strong>할 일 추가</strong><small>계획에 필요한 작업을 추가합니다.</small><span class="quick-start-link">할 일 추가</span>
+              </button>
+              <button id="homeDailyBtn" class="quick-start-card violet" type="button">
+                <span class="quick-start-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16M8 15v-4m5 4V7m5 8v-6"/></svg></span><strong>결과 확인</strong><small>진행률과 기록한 시간을 확인합니다.</small><span class="quick-start-link">결과 보기</span>
+              </button>
+            </section>
+
+            <section class="home-section">
+              <div class="section-heading"><div><h3>진행 중인 계획</h3><p>계획별 일정과 진행률을 확인하세요.</p></div><button class="text-button" type="button" data-go="plan">전체 보기</button></div>
+              <div id="overviewPlans" class="home-plan-grid"></div>
+            </section>
+
+            <!-- JS compatibility / secondary actions -->
+            <div class="hidden" aria-hidden="true"><span id="homeBriefText"></span><span id="homeTodayCount">0</span><span id="homeOverdueCount">0</span><span id="homeUpcomingCount">0</span><div id="overviewTasks"></div><button id="homeMoreBtn" type="button"></button></div>
+          </div>
+        </section>
+
+        <!-- PLAN -->
+        <section id="view-plan" class="view">
+          <div class="page-heading">
+            <div><h3>계획</h3><p>계획별 목표, 일정, 진행률을 관리하세요.</p></div>
+            <button id="planCreateBtn" class="button primary" type="button">+ 새 계획</button>
+          </div>
+          <article class="workspace-card plan-workspace-card">
+            <div class="workspace-tabs plan-tabs" role="group" aria-label="계획 상태 필터">
+              <button type="button" data-plan-filter="all" class="active">전체</button>
+              <button type="button" data-plan-filter="active">진행 중</button>
+              <button type="button" data-plan-filter="done">완료</button>
+            </div>
+            <input id="planSearch" class="hidden" type="search" placeholder="계획 검색" aria-label="계획 검색">
+            <div class="plan-list-summary"><span id="planListCount">0개</span><span>마감일 순</span></div>
+            <div id="planListPanel" class="plan-list"></div>
+          </article>
+        </section>
+
+        <!-- TASKS -->
+        <section id="view-do" class="view">
+          <div class="page-heading">
+            <div><h3>할 일</h3><p>계획별 할 일을 확인하고 작업 내용을 기록하세요.</p></div>
+            <button id="taskAddBtn" class="button primary" type="button">+ 할 일 추가</button>
+          </div>
+
+          <article class="workspace-card task-workspace">
+            <section class="task-plan-context" aria-label="선택한 계획">
+              <div class="task-plan-context-main">
+                <label class="task-plan-picker">계획 선택
+                  <select id="planFilter" aria-label="할 일을 볼 계획 선택"><option value="all">모든 계획</option></select>
+                </label>
+              </div>
+              <div class="task-plan-progress" aria-live="polite">
+                <span id="taskPlanCount">완료 0 / 전체 0개</span>
+                <div class="progress-track"><div id="taskPlanProgressFill" class="progress-fill" style="width:0%"></div></div>
+                <strong id="taskPlanProgressPercent">0%</strong>
+              </div>
+              <button id="taskPlanViewBtn" class="button ghost compact" type="button">계획 보기</button>
+            </section>
+
+            <div class="task-toolbar-row">
+              <div class="workspace-tabs task-status-tabs" role="group" aria-label="할 일 상태 필터">
+                <button type="button" class="active" data-task-filter="in_progress">미완료</button>
+                <button type="button" data-task-filter="all">전체</button>
+                <button type="button" data-task-filter="done">완료</button>
+              </div>
+              <div class="task-search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="taskSearch" type="search" placeholder="계획 선택 후 할 일 검색" aria-label="선택한 계획 안에서 할 일 검색" disabled></div>
+            </div>
+
+            <div class="task-filter-row">
+              <label>마감일<select id="dueFilter" aria-label="마감일 필터"><option value="all">전체</option><option value="today">오늘</option><option value="overdue">기한 지남</option><option value="upcoming">다가오는 7일</option></select></label>
+              <button id="advancedFilterBtn" class="text-button" type="button">상세 필터⌄</button>
+              <span id="taskScopeHelper" class="task-scope-helper">검색하려면 먼저 계획을 선택하세요.</span>
+              <button type="button" id="resetTaskFilters" class="text-button task-filter-reset">필터 초기화</button>
+            </div>
+
+            <div id="advancedTaskFilters" class="task-controls-advanced hidden">
+              <select id="priorityFilter" aria-label="우선순위 필터"><option value="all">모든 우선순위</option><option value="high">높음</option><option value="medium">보통</option><option value="low">낮음</option></select>
+              <select id="tagFilter" aria-label="태그 필터"><option value="all">모든 태그</option></select>
+              <select id="taskSort" aria-label="정렬 기준"><option value="due">마감일 순</option><option value="priority">우선순위 순</option><option value="created">최근 생성 순</option></select>
+              <p id="taskSortRule" class="sort-rule">마감일 빠른 순</p>
+            </div>
+
+            <div class="task-result-meta"><span id="taskCountLabel">0개</span></div>
+            <div class="task-list-head" aria-hidden="true"><span></span><span>할 일</span><span>마감</span><span>시간</span><span></span></div>
+            <div id="taskList" class="task-list"></div>
+          </article>
+        </section>
+
+        <!-- RESULTS -->
+        <section id="view-see" class="view">
+          <div class="page-heading review-page-heading">
+            <div><h3>결과 보기</h3><p>진행 결과와 작업 기록을 비교하세요.</p></div>
+          </div>
+
+          <div class="review-tabs workspace-tabs" role="group" aria-label="결과 보기 범위">
+            <button type="button" data-review-tab="plan" class="active">계획 결과</button>
+            <button type="button" data-review-tab="daily">하루 기록</button>
+          </div>
+
+          <div id="planReviewContent">
+            <section class="review-hero-card">
+              <div><span class="review-hero-kicker">계획별 결과</span><h3>계획한 시간과 실제 기록 비교</h3></div>
+              <label class="review-plan-select">계획 선택<select id="reviewPlanSelect" aria-label="돌아볼 계획"></select></label>
+            </section>
+
+            <section class="review-metrics">
+              <article><span class="metric-icon done"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8 12 3 3 5-6"/></svg></span><small>완료한 할 일</small><strong id="seeCompletionSub">0 / 0</strong></article>
+              <article><span class="metric-icon estimate"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></span><small>예상 시간</small><strong id="seeEstimate">0m</strong></article>
+              <article><span class="metric-icon actual"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M12 3v3m6 1 2-2"/><circle cx="12" cy="14" r="7"/><path d="M12 10v4l2 2"/></svg></span><small>실제 시간</small><strong id="seeActual">0m</strong></article>
+              <article><span class="metric-icon rate"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="m12 12 7-7"/></svg></span><small>달성률</small><strong id="seeCompletion">0%</strong></article>
+              <div class="hidden"><span id="seeDelayed">0</span><span id="seeBlocked">0</span><span id="seeDelta">0m</span><span id="seeDeltaSub"></span></div>
+            </section>
+
+            <section class="review-insights-grid">
+              <article class="insight-card good-card"><div class="insight-title"><span><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16M8 15v-4m5 4V7m5 8v-6"/></svg></span><h3>기록 요약</h3></div><ul id="reviewGoodList" class="insight-list"></ul></article>
+              <article class="insight-card next-card"><div class="insight-title"><span><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z"/></svg></span><h3>다음 계획에 반영할 점</h3></div><textarea id="improvementText" rows="5" maxlength="1000" placeholder="다음 계획에서 조정할 시간이나 작업 방식을 적어주세요."></textarea><div class="review-note-actions"><button id="reviewSaveBtn" class="button primary" type="button">저장</button><button id="createPlanFromReviewBtn" class="button ghost" type="button">메모를 담아 새 계획</button></div></article>
+            </section>
+
+            <details class="review-detail-section"><summary>할 일별 기록</summary><div id="evidenceList" class="evidence-list"></div></details>
+          </div>
+
+          <article id="dailyReviewContent" class="workspace-card daily-review-panel hidden">
+            <div class="section-heading daily-review-head">
+              <div><h3>하루 기록</h3><p>모든 계획의 작업 시간을 날짜별로 모아 확인합니다.</p></div>
+              <div class="daily-actions"><button id="ruleChangeBtn" class="button ghost hidden" type="button">계획 기준 수정</button><button id="dailyAddBtn" class="button primary" type="button">오늘 기록 작성</button></div>
+            </div>
+            <div id="dailySummary" class="daily-summary"></div>
+            <div id="dailyTimeline" class="daily-timeline"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- PLAN DETAIL -->
+  <dialog id="planDetailDialog" class="dialog modal-dialog">
+    <div class="dialog-card detail-dialog-card">
+      <div class="dialog-head detail-dialog-head"><div><p class="eyebrow">PLAN DETAIL</p><h3 id="planTitle">-</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div>
+      <div class="detail-dialog-body">
+        <div class="plan-detail-meta-row">
+          <div class="status-line"><span id="planPriorityPill" class="pill">-</span><span id="planVersionPill" class="pill muted-pill">v1</span></div>
+          <button id="versionHistoryBtn" class="button ghost plan-history-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>버전 기록</span></button>
+        </div>
+        <dl class="detail-list">
+          <div><dt>기간</dt><dd id="planDates">-</dd></div>
+          <div><dt>예상 시간</dt><dd id="planEstimate">-</dd></div>
+          <div><dt>진행률</dt><dd id="planProgressBlock">-</dd></div>
+        </dl>
+        <section class="detail-section"><h4>성공 기준</h4><p id="planCriteria">-</p></section>
+        <section id="planImprovementSection" class="detail-section subtle-section"><h4>이전 회고에서 가져온 메모</h4><p id="carriedImprovement">없음</p></section>
+        <section class="detail-section linked-task-section"><div class="linked-task-heading"><h4>연결된 할 일 <span id="planLinkedCount">0개</span></h4><button id="planTasksTextBtn" class="text-button" type="button">할 일 보기</button></div><div id="planLinkedTasks" class="linked-task-list"></div></section>
+      </div>
+      <div class="dialog-actions detail-dialog-actions plan-detail-actions">
+        <button id="planEditBtn" class="button ghost icon-text-button" type="button"><span>수정</span></button>
+        <button id="planTasksBtn" class="button primary icon-text-button" type="button"><span>할 일 보기</span></button>
+        <button id="planDeleteBtn" class="button danger-soft icon-text-button" type="button"><span>삭제</span></button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- PLAN CREATE / EDIT -->
+  <dialog id="planDialog" class="dialog modal-dialog">
+    <form id="planForm" class="dialog-card form-dialog-card" method="dialog">
+      <div class="dialog-head"><div><p class="eyebrow">PLAN</p><h3 id="planDialogTitle">새 계획</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div>
+      <input type="hidden" name="mode" value="create">
+      <div class="form-stack">
+        <label>계획명 <span class="required">*</span><input name="title" maxlength="120" required placeholder="예) 이번 주 핵심 목표 마무리"></label>
+        <div class="form-grid two"><label>기간 · 시작일<input name="startDate" type="date" required></label><label>기간 · 종료일<input name="endDate" type="date" required></label></div>
+        <div class="form-grid two"><label>우선순위<select name="priority"><option value="low">낮음</option><option value="medium" selected>보통</option><option value="high">높음</option></select></label><label>예상 시간(분)<input name="estimatedMinutes" type="number" min="0" value="120" required placeholder="예) 420"></label></div>
+        <label>성공 기준 <span class="required">*</span><textarea name="successCriteria" rows="4" maxlength="600" required placeholder="예) 핵심 할 일을 우선순위대로 마무리하고 실제 수행 시간을 기록한다."></textarea></label>
+        <details class="optional-fields"><summary>이전 회고 메모 가져오기 <span>선택</span></summary><label>가져올 메모<textarea name="carriedImprovement" rows="3" maxlength="600" placeholder="이전 계획에서 다음 계획으로 가져올 내용이 있을 때만 적습니다."></textarea></label></details>
+      </div>
+      <div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog>취소</button><button class="button ghost" type="submit">계획만 저장</button><button id="planContinueBtn" class="button primary" type="submit" data-next-task="true">저장하고 할 일 추가</button></div>
+      <p class="form-message" data-form-message="plan"></p>
+    </form>
+  </dialog>
+
+  <dialog id="planDeleteDialog" class="dialog modal-dialog"><div class="dialog-card compact-dialog"><div class="dialog-head"><div><p class="eyebrow">PLAN</p><h3>계획 삭제</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><p class="delete-warning">이 계획과 연결된 할 일·작업 기록도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p><div class="delete-target"><span>삭제할 계획</span><strong id="planDeleteTarget">-</strong></div><div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog>취소</button><button id="confirmPlanDeleteBtn" class="button danger" type="button">삭제</button></div></div></dialog>
+
+  <!-- TASK CREATE / EDIT -->
+  <dialog id="taskDialog" class="dialog modal-dialog">
+    <form id="taskForm" class="dialog-card form-dialog-card" method="dialog">
+      <div class="dialog-head"><div><p class="eyebrow">TASK</p><h3 id="taskDialogTitle">할 일 추가</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div>
+      <input type="hidden" name="mode" value="create"><input type="hidden" name="taskId" value="">
+      <div class="form-stack">
+        <label>계획<select name="planId" id="taskPlanSelect" required></select></label>
+        <label>할 일 제목 <span class="required">*</span><input name="title" maxlength="160" required placeholder="할 일 제목을 입력하세요."></label>
+        <label>설명<textarea name="description" rows="4" maxlength="1000" placeholder="세부 내용을 입력하세요. (선택)"></textarea></label>
+        <div class="form-grid three"><label>우선순위<select name="priority"><option value="low">낮음</option><option value="medium" selected>보통</option><option value="high">높음</option></select></label><label>마감일<input name="dueDate" type="date" required></label><label>예상 시간(분)<input name="estimatedMinutes" type="number" min="0" value="30" required placeholder="예) 90"></label></div>
+        <label>태그 (선택)<input name="tag" maxlength="40" placeholder="태그를 입력하세요"></label>
+      </div>
+      <div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog>취소</button><button class="button primary" type="submit">추가하기</button></div>
+      <p class="form-message" data-form-message="task"></p>
+    </form>
+  </dialog>
+
+  <dialog id="taskDetailDialog" class="dialog modal-dialog"><div class="dialog-card detail-dialog-card task-detail-card"><div class="dialog-head detail-dialog-head"><div><p id="taskDetailPlan" class="eyebrow">할 일</p><h3 id="taskDetailTitle">-</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div class="detail-dialog-body"><p id="taskDetailDescription" class="task-detail-description">메모가 없습니다.</p><dl class="detail-list compact-details"><div><dt>마감일</dt><dd id="taskDetailDue">-</dd></div><div><dt>예상 시간</dt><dd id="taskDetailEstimate">-</dd></div><div><dt>기록 시간</dt><dd id="taskDetailActual">-</dd></div><div><dt>우선순위</dt><dd id="taskDetailPriority">-</dd></div></dl></div><div class="dialog-actions detail-dialog-actions"><button id="taskDetailLogBtn" class="button primary" type="button">작업 기록 남기기</button><button id="taskDetailEditBtn" class="button ghost" type="button">수정</button><button id="taskDetailDeleteBtn" class="button danger-soft" type="button">삭제</button></div></div></dialog>
+
+  <dialog id="executionDialog" class="dialog modal-dialog"><form id="executionForm" class="dialog-card form-dialog-card" method="dialog"><div class="dialog-head"><div><p class="eyebrow">WORK LOG</p><h3>작업 기록 남기기</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div class="form-stack"><label>할 일<select name="taskId" id="executionTaskSelect" required></select></label><div class="form-grid two"><label>시작<input name="startedAt" type="datetime-local" required></label><label>종료<input name="endedAt" type="datetime-local" required></label></div><label>작업 메모<textarea name="note" rows="4" maxlength="800" placeholder="진행한 내용과 이어서 할 작업을 적어주세요."></textarea></label><label class="check-line"><input id="executionBlockedToggle" name="hadBlocker" type="checkbox" value="1"><span>작업 중 막힘 있음</span></label><label id="executionBlockerField" class="hidden">막힌 이유<textarea name="blockerReason" rows="3" maxlength="500" placeholder="문제와 해결에 필요한 내용을 적어주세요."></textarea></label></div><div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog>취소</button><button class="button primary" type="submit">기록 저장</button></div><p class="form-message" data-form-message="execution"></p></form></dialog>
+
+  <!-- DAILY / RULE -->
+  <dialog id="dailyDialog" class="dialog modal-dialog"><form id="dailyForm" class="dialog-card compact-dialog" method="dialog"><div class="dialog-head"><div><p class="eyebrow">DAILY LOG</p><h3>오늘 기록</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><p class="dialog-help">오늘 작업 시간은 저장된 작업 기록을 기준으로 자동 계산됩니다.</p><div class="form-stack"><label>오늘 한 일<textarea name="summary" rows="4" maxlength="800" required placeholder="오늘 마무리한 일이나 확인한 내용을 짧게 적어보세요."></textarea></label><label id="initialRuleField">현재 계획 기준<textarea name="ruleSnapshot" rows="3" maxlength="300" placeholder="예: 하루 시작 전에 중요한 할 일 3개를 먼저 정한다."></textarea></label></div><div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog>취소</button><button class="button primary" type="submit">저장</button></div><p class="form-message" data-form-message="daily"></p></form></dialog>
+  <dialog id="ruleDialog" class="dialog modal-dialog"><form id="ruleForm" class="dialog-card compact-dialog" method="dialog"><div class="dialog-head"><div><p class="eyebrow">PLAN RULE</p><h3>계획 기준 수정</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div class="before-rule"><span>현재 기준</span><strong id="beforeRuleText">-</strong></div><div class="form-stack"><label>새 기준<textarea name="afterRule" rows="3" maxlength="300" required></textarea></label><label>바꾸는 이유<textarea name="reason" rows="3" maxlength="500" required></textarea></label></div><div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog>취소</button><button class="button primary" type="submit">변경 저장</button></div><p class="form-message" data-form-message="rule"></p></form></dialog>
+
+  <dialog id="versionDialog" class="dialog modal-dialog"><div class="dialog-card"><div class="dialog-head"><div><p class="eyebrow">VERSION HISTORY</p><h3>버전 기록</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div id="versionList" class="version-list"></div></div></dialog>
+
+  <dialog id="settingsDialog" class="dialog modal-dialog"><div class="dialog-card settings-card"><div class="dialog-head"><div><p class="eyebrow">ACCOUNT</p><h3>계정 및 데이터</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div class="settings-grid"><section><h4>내 데이터 내보내기</h4><p>계획·할 일·작업 기록·회고를 JSON 파일 하나로 저장합니다.</p><button id="exportBtn" class="button ghost" type="button">내보내기</button></section><section><h4>로그아웃</h4><p>현재 브라우저의 로그인 세션을 종료합니다.</p><button id="logoutBtn" class="button ghost" type="button">로그아웃</button></section><section><h4>비밀번호 변경</h4><form id="passwordForm" method="post"><label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" required></label><label>새 비밀번호<input name="newPassword" type="password" autocomplete="new-password" required></label><button class="button ghost" type="submit">변경</button><p class="form-message" data-form-message="password"></p></form></section><section class="danger-zone"><h4>계정 삭제</h4><p>계정을 삭제하면 내 계획과 기록도 함께 삭제됩니다.</p><form id="deleteAccountForm" method="post"><label>비밀번호 확인<input name="password" type="password" autocomplete="current-password" required></label><button class="button danger" type="submit">계정과 데이터 삭제</button><p class="form-message" data-form-message="delete"></p></form></section></div></div></dialog>
+
+  <script src="./script.js" defer></script>
+</body>
+</html>
