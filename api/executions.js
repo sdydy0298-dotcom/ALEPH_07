@@ -6,14 +6,35 @@ export default async function handler(req,res){
   const user=await requireUser(req,res); if(!user)return;
   try{
     if(req.method==='GET'){
+      const taskId=text(req.query?.taskId,64);
       const planId=text(req.query?.planId,64);
+
+      if(taskId){
+        const ownTask=await query(
+          `SELECT t.id FROM tasks t JOIN plans p ON p.id=t.plan_id
+           WHERE t.id=$1 AND p.user_id=$2 AND t.deleted_at IS NULL`,
+          [taskId,user.id]
+        );
+        if(!ownTask.rows[0]) return failure(res,404,'TASK_NOT_FOUND','할 일을 찾을 수 없습니다.');
+        const r=await query(
+          `SELECT e.*,t.title AS task_title,t.plan_id
+           FROM execution_logs e
+           JOIN tasks t ON t.id=e.task_id
+           JOIN plans p ON p.id=t.plan_id
+           WHERE e.task_id=$1 AND p.user_id=$2
+           ORDER BY e.started_at DESC, e.created_at DESC`,
+          [taskId,user.id]
+        );
+        return json(res,200,{ok:true,executions:r.rows});
+      }
+
       if(planId){
         const own=await query('SELECT id FROM plans WHERE id=$1 AND user_id=$2',[planId,user.id]);
         if(!own.rows[0]) return failure(res,404,'PLAN_NOT_FOUND','계획을 찾을 수 없습니다.');
       }
       const sql=planId
-        ? `SELECT e.*,t.title AS task_title,t.plan_id FROM execution_logs e JOIN tasks t ON t.id=e.task_id JOIN plans p ON p.id=t.plan_id WHERE t.plan_id=$1 AND p.user_id=$2 ORDER BY e.started_at DESC`
-        : `SELECT e.*,t.title AS task_title,t.plan_id FROM execution_logs e JOIN tasks t ON t.id=e.task_id JOIN plans p ON p.id=t.plan_id WHERE p.user_id=$1 ORDER BY e.started_at DESC`;
+        ? `SELECT e.*,t.title AS task_title,t.plan_id FROM execution_logs e JOIN tasks t ON t.id=e.task_id JOIN plans p ON p.id=t.plan_id WHERE t.plan_id=$1 AND p.user_id=$2 ORDER BY e.started_at DESC, e.created_at DESC`
+        : `SELECT e.*,t.title AS task_title,t.plan_id FROM execution_logs e JOIN tasks t ON t.id=e.task_id JOIN plans p ON p.id=t.plan_id WHERE p.user_id=$1 ORDER BY e.started_at DESC, e.created_at DESC`;
       const r=await query(sql,planId?[planId,user.id]:[user.id]);
       return json(res,200,{ok:true,executions:r.rows});
     }

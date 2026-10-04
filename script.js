@@ -549,16 +549,21 @@ async function deleteTask(task){
 
 function taskExecutions(taskId){
   return state.allExecutions
-    .filter(ex=>ex.task_id===taskId)
-    .sort((a,b)=>String(b.started_at).localeCompare(String(a.started_at)));
+    .filter(ex=>String(ex.task_id)===String(taskId))
+    .sort((a,b)=>String(b.started_at).localeCompare(String(a.started_at)) || String(b.created_at).localeCompare(String(a.created_at)));
 }
 
-function renderTaskDetail(task){
+function replaceTaskExecutions(taskId, logs){
+  const keep=state.allExecutions.filter(ex=>String(ex.task_id)!==String(taskId));
+  state.allExecutions=[...keep,...logs];
+}
+
+function renderTaskDetail(task, explicitLogs=null){
   const planName=task.plan_title||planTitle(task.plan_id);
   const actual=Math.max(0,Number(task.actual_minutes||0));
   const estimate=Math.max(0,Number(task.estimated_minutes||0));
   const progress=estimate?Math.round((actual/estimate)*100):0;
-  const logs=taskExecutions(task.id);
+  const logs=explicitLogs===null?taskExecutions(task.id):explicitLogs;
 
   $('#taskDetailPlan').textContent=planName;
   $('#taskDetailPlanName').textContent=planName;
@@ -617,12 +622,29 @@ function renderTaskDetail(task){
   completeBtn.classList.toggle('primary',task.status!=='done');
 }
 
-function openTaskDetail(task){
+async function openTaskDetail(task){
   if(!task)return;
   state.selectedTaskId=task.id;
-  const fresh=state.allTasks.find(t=>t.id===task.id)||task;
+  const fresh=state.allTasks.find(t=>String(t.id)===String(task.id))||task;
   renderTaskDetail(fresh);
   openDialog('#taskDetailDialog');
+
+  try{
+    const data=await api(`/api/executions?taskId=${encodeURIComponent(fresh.id)}`);
+    if(String(state.selectedTaskId)!==String(fresh.id))return;
+    const logs=data.executions||[];
+    replaceTaskExecutions(fresh.id,logs);
+    const latest=state.allTasks.find(t=>String(t.id)===String(fresh.id))||fresh;
+    renderTaskDetail(latest,logs);
+  }catch(err){
+    if(String(state.selectedTaskId)!==String(fresh.id))return;
+    const list=$('#taskDetailWorkLogList');
+    clear(list);
+    const failed=el('div','task-worklog-empty');
+    failed.append(el('strong','','작업 기록을 불러오지 못했습니다.'),el('p','',err?.message||'잠시 후 다시 시도해 주세요.'));
+    list.append(failed);
+    toast(err?.message||'작업 기록을 불러오지 못했습니다.',requestTone(err));
+  }
 }
 function selectedTask(){return state.allTasks.find(t=>t.id===state.selectedTaskId)||null;}
 
@@ -694,7 +716,7 @@ $('#taskSort').addEventListener('change',e=>{state.taskSort=e.target.value;rende
 $('#planForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('plan');const b=formDataObject(e.currentTarget);const mode=b.mode;const nextTask=e.submitter?.dataset.nextTask==='true';delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(b.endDate<b.startDate){setMessage('plan','종료일은 시작일보다 빠를 수 없습니다.','failure');return;}if(mode==='revise')b.planId=state.currentPlanId;try{const result=await api('/api/plans',{method:mode==='revise'?'PATCH':'POST',body:b});if(mode==='create'&&result?.plan?.plan_id)state.currentPlanId=result.plan.plan_id;closeDialog($('#planDialog'));await refreshAll();toast(mode==='revise'?'새 계획 버전을 저장했습니다.':'계획을 만들었습니다.');if(mode==='create'){state.planSearch='';state.planStatusFilter='all';renderPlanList();if(nextTask)openTaskDialog();}}catch(err){setRequestMessage('plan',err);}});
 $('#confirmPlanDeleteBtn').addEventListener('click',async()=>{const p=currentPlan();if(!p)return;const id=p.id;try{await api(`/api/plans?planId=${encodeURIComponent(id)}`,{method:'DELETE'});closeDialog($('#planDeleteDialog'));state.currentPlanId=null;await refreshAll();toast('계획을 삭제했습니다.');}catch(e){toast(e.message,requestTone(e));}});
 $('#taskForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('task');const b=formDataObject(e.currentTarget);const mode=b.mode;delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(mode==='create')delete b.taskId;try{await api('/api/tasks',{method:mode==='edit'?'PATCH':'POST',body:b});closeDialog($('#taskDialog'));await refreshAll();toast(mode==='edit'?'할 일을 수정했습니다.':'할 일을 추가했습니다.');if(mode==='create')openTaskList(b.planId);}catch(err){setRequestMessage('task',err);}});
-$('#executionForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('execution');const b=formDataObject(e.currentTarget);const taskId=b.taskId;const returnToDetail=state.returnToTaskDetailAfterExecution;const s=new Date(b.startedAt),end=new Date(b.endedAt);if(Number.isNaN(s.getTime())||Number.isNaN(end.getTime())||end<s){setMessage('execution','종료 시각은 시작 시각보다 빠를 수 없습니다.','failure');return;}b.startedAt=s.toISOString();b.endedAt=end.toISOString();b.actualMinutes=Math.max(0,Math.round((end-s)/60000));delete b.hadBlocker;if(!$('#executionBlockedToggle').checked)b.blockerReason='';try{await api('/api/executions',{method:'POST',body:b});closeDialog($('#executionDialog'));await refreshAll();state.returnToTaskDetailAfterExecution=false;toast('작업 기록을 저장했습니다.');if(returnToDetail){const latest=state.allTasks.find(t=>t.id===taskId);if(latest)openTaskDetail(latest);}}catch(err){setRequestMessage('execution',err);}});
+$('#executionForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('execution');const b=formDataObject(e.currentTarget);const taskId=b.taskId;const returnToDetail=state.returnToTaskDetailAfterExecution;const s=new Date(b.startedAt),end=new Date(b.endedAt);if(Number.isNaN(s.getTime())||Number.isNaN(end.getTime())||end<s){setMessage('execution','종료 시각은 시작 시각보다 빠를 수 없습니다.','failure');return;}b.startedAt=s.toISOString();b.endedAt=end.toISOString();b.actualMinutes=Math.max(0,Math.round((end-s)/60000));delete b.hadBlocker;if(!$('#executionBlockedToggle').checked)b.blockerReason='';try{await api('/api/executions',{method:'POST',body:b});closeDialog($('#executionDialog'));await refreshAll();state.returnToTaskDetailAfterExecution=false;toast('작업 기록을 저장했습니다.');if(returnToDetail){const latest=state.allTasks.find(t=>String(t.id)===String(taskId));if(latest)await openTaskDetail(latest);}}catch(err){setRequestMessage('execution',err);}});
 $('#dailyForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('daily');const b=formDataObject(e.currentTarget);if(state.daily.records.length===0&&!String(b.ruleSnapshot||'').trim()){setMessage('daily','첫날에는 현재 계획 기준을 입력해 주세요.','failure');return;}try{await api('/api/daily',{method:'POST',body:b});closeDialog($('#dailyDialog'));await refreshAll();toast('오늘 회고를 저장했습니다.');}catch(err){setRequestMessage('daily',err);}});
 $('#ruleForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('rule');const b=formDataObject(e.currentTarget);const before=state.daily.records.at(-1)?.rule_snapshot||'';if(String(b.afterRule||'').trim()===String(before).trim()){setMessage('rule','새 기준은 현재 기준과 다르게 입력해 주세요.','failure');return;}try{await api('/api/rule-change',{method:'POST',body:b});closeDialog($('#ruleDialog'));await refreshAll();toast('계획 기준을 수정했습니다.');}catch(err){setRequestMessage('rule',err);}});
 $('#reviewSaveBtn').addEventListener('click',async()=>{if(!state.currentPlanId)return;try{await api('/api/review',{method:'PUT',body:{planId:state.currentPlanId,improvementText:$('#improvementText').value}});await refreshAll();toast('돌아보기를 저장했습니다.');}catch(e){toast(e.message,requestTone(e));}});
