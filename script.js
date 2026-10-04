@@ -609,7 +609,18 @@ function renderTaskDetail(task, explicitLogs=null){
       );
       const note=el('p','task-worklog-note',ex.note||'작업 메모가 없습니다.');
       const meta=el('div','task-worklog-meta');
-      meta.append(el('span',`task-worklog-blocker ${ex.blocker_reason?'has-blocker':'clear'}`,ex.blocker_reason?`막힘: ${ex.blocker_reason}`:'막힘 없음'));
+      const blocker=el('span',`task-worklog-blocker ${ex.blocker_reason?'has-blocker':'clear'}`,ex.blocker_reason?`막힘: ${ex.blocker_reason}`:'막힘 없음');
+      const actions=el('div','task-worklog-actions');
+      const editBtn=el('button','task-worklog-action','수정');
+      editBtn.type='button';
+      editBtn.setAttribute('aria-label',`${workLogDateText(ex.started_at)} 작업 기록 수정`);
+      editBtn.addEventListener('click',()=>{closeDialog($('#taskDetailDialog'));openExecutionEditDialog(ex);});
+      const deleteBtn=el('button','task-worklog-action danger','삭제');
+      deleteBtn.type='button';
+      deleteBtn.setAttribute('aria-label',`${workLogDateText(ex.started_at)} 작업 기록 삭제`);
+      deleteBtn.addEventListener('click',()=>deleteExecutionLog(ex));
+      actions.append(editBtn,deleteBtn);
+      meta.append(blocker,actions);
       body.append(top,note,meta);
       row.append(dot,body);
       list.append(row);
@@ -666,7 +677,65 @@ function openTaskDialog(task=null){
   }
   openDialog('#taskDialog');
 }
-function openExecutionDialog(taskId='',returnToDetail=false){if(!state.allTasks.length){toast('기록을 남길 할 일이 없습니다.','failure');return;}state.returnToTaskDetailAfterExecution=Boolean(returnToDetail);const f=$('#executionForm');f.reset();renderTaskControls();$('#executionBlockerField').classList.add('hidden');const end=new Date();const start=new Date(end.getTime()-30*60000);f.elements.startedAt.value=toLocalInput(start);f.elements.endedAt.value=toLocalInput(end);if(taskId)f.elements.taskId.value=taskId;setMessage('execution');openDialog('#executionDialog');}
+function setExecutionDialogMode(mode='create'){
+  const f=$('#executionForm');
+  const editing=mode==='edit';
+  f.dataset.mode=editing?'edit':'create';
+  if(!editing){f.dataset.executionId='';f.dataset.originalTaskId='';}
+  const select=$('#executionTaskSelect');
+  select.disabled=editing;
+  f.querySelector('.dialog-head h3').textContent=editing?'작업 기록 수정':'작업 기록 남기기';
+  f.querySelector('button[type="submit"]').textContent=editing?'수정 저장':'기록 저장';
+}
+function openExecutionDialog(taskId='',returnToDetail=false){
+  if(!state.allTasks.length){toast('기록을 남길 할 일이 없습니다.','failure');return;}
+  state.returnToTaskDetailAfterExecution=Boolean(returnToDetail);
+  const f=$('#executionForm');
+  f.reset();
+  renderTaskControls();
+  setExecutionDialogMode('create');
+  $('#executionBlockerField').classList.add('hidden');
+  const end=new Date();
+  const start=new Date(end.getTime()-30*60000);
+  f.elements.startedAt.value=toLocalInput(start);
+  f.elements.endedAt.value=toLocalInput(end);
+  if(taskId)f.elements.taskId.value=taskId;
+  f.dataset.originalTaskId=taskId||'';
+  setMessage('execution');
+  openDialog('#executionDialog');
+}
+function openExecutionEditDialog(execution){
+  if(!execution)return;
+  const f=$('#executionForm');
+  f.reset();
+  renderTaskControls();
+  setExecutionDialogMode('edit');
+  f.dataset.executionId=String(execution.id||'');
+  f.dataset.originalTaskId=String(execution.task_id||state.selectedTaskId||'');
+  f.elements.taskId.value=String(execution.task_id||'');
+  f.elements.startedAt.value=toLocalInput(new Date(execution.started_at));
+  f.elements.endedAt.value=toLocalInput(new Date(execution.ended_at));
+  f.elements.note.value=execution.note||'';
+  const hasBlocker=Boolean(String(execution.blocker_reason||'').trim());
+  $('#executionBlockedToggle').checked=hasBlocker;
+  $('#executionBlockerField').classList.toggle('hidden',!hasBlocker);
+  f.elements.blockerReason.value=execution.blocker_reason||'';
+  state.returnToTaskDetailAfterExecution=true;
+  setMessage('execution');
+  openDialog('#executionDialog');
+}
+async function deleteExecutionLog(execution){
+  if(!execution?.id)return;
+  const taskId=String(execution.task_id||state.selectedTaskId||'');
+  if(!confirm('이 작업 기록을 삭제할까요? 삭제한 기록은 되돌릴 수 없습니다.'))return;
+  try{
+    await api(`/api/executions?executionId=${encodeURIComponent(execution.id)}`,{method:'DELETE'});
+    await refreshAll();
+    toast('작업 기록을 삭제했습니다.');
+    const latest=state.allTasks.find(t=>String(t.id)===taskId);
+    if(latest)await openTaskDetail(latest);
+  }catch(err){toast(err?.message||'작업 기록을 삭제하지 못했습니다.',requestTone(err));}
+}
 function openDailyDialog(){setMessage('daily');$('#dailyForm').reset();$('#initialRuleField').classList.toggle('hidden',state.daily.records.length>0);openDialog('#dailyDialog');}
 function openRuleDialog(){const before=state.daily.records.at(-1)?.rule_snapshot||'-';$('#beforeRuleText').textContent=before;$('#ruleForm').reset();setMessage('rule');openDialog('#ruleDialog');}
 
@@ -716,7 +785,34 @@ $('#taskSort').addEventListener('change',e=>{state.taskSort=e.target.value;rende
 $('#planForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('plan');const b=formDataObject(e.currentTarget);const mode=b.mode;const nextTask=e.submitter?.dataset.nextTask==='true';delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(b.endDate<b.startDate){setMessage('plan','종료일은 시작일보다 빠를 수 없습니다.','failure');return;}if(mode==='revise')b.planId=state.currentPlanId;try{const result=await api('/api/plans',{method:mode==='revise'?'PATCH':'POST',body:b});if(mode==='create'&&result?.plan?.plan_id)state.currentPlanId=result.plan.plan_id;closeDialog($('#planDialog'));await refreshAll();toast(mode==='revise'?'새 계획 버전을 저장했습니다.':'계획을 만들었습니다.');if(mode==='create'){state.planSearch='';state.planStatusFilter='all';renderPlanList();if(nextTask)openTaskDialog();}}catch(err){setRequestMessage('plan',err);}});
 $('#confirmPlanDeleteBtn').addEventListener('click',async()=>{const p=currentPlan();if(!p)return;const id=p.id;try{await api(`/api/plans?planId=${encodeURIComponent(id)}`,{method:'DELETE'});closeDialog($('#planDeleteDialog'));state.currentPlanId=null;await refreshAll();toast('계획을 삭제했습니다.');}catch(e){toast(e.message,requestTone(e));}});
 $('#taskForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('task');const b=formDataObject(e.currentTarget);const mode=b.mode;delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(mode==='create')delete b.taskId;try{await api('/api/tasks',{method:mode==='edit'?'PATCH':'POST',body:b});closeDialog($('#taskDialog'));await refreshAll();toast(mode==='edit'?'할 일을 수정했습니다.':'할 일을 추가했습니다.');if(mode==='create')openTaskList(b.planId);}catch(err){setRequestMessage('task',err);}});
-$('#executionForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('execution');const b=formDataObject(e.currentTarget);const taskId=b.taskId;const returnToDetail=state.returnToTaskDetailAfterExecution;const s=new Date(b.startedAt),end=new Date(b.endedAt);if(Number.isNaN(s.getTime())||Number.isNaN(end.getTime())||end<s){setMessage('execution','종료 시각은 시작 시각보다 빠를 수 없습니다.','failure');return;}b.startedAt=s.toISOString();b.endedAt=end.toISOString();b.actualMinutes=Math.max(0,Math.round((end-s)/60000));delete b.hadBlocker;if(!$('#executionBlockedToggle').checked)b.blockerReason='';try{await api('/api/executions',{method:'POST',body:b});closeDialog($('#executionDialog'));await refreshAll();state.returnToTaskDetailAfterExecution=false;toast('작업 기록을 저장했습니다.');if(returnToDetail){const latest=state.allTasks.find(t=>String(t.id)===String(taskId));if(latest)await openTaskDetail(latest);}}catch(err){setRequestMessage('execution',err);}});
+$('#executionForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  setMessage('execution');
+  const form=e.currentTarget;
+  const mode=form.dataset.mode==='edit'?'edit':'create';
+  const b=formDataObject(form);
+  const taskId=mode==='edit'?(form.dataset.originalTaskId||state.selectedTaskId):b.taskId;
+  const returnToDetail=state.returnToTaskDetailAfterExecution;
+  const s=new Date(b.startedAt),end=new Date(b.endedAt);
+  if(Number.isNaN(s.getTime())||Number.isNaN(end.getTime())||end<s){setMessage('execution','종료 시각은 시작 시각보다 빠를 수 없습니다.','failure');return;}
+  b.startedAt=s.toISOString();
+  b.endedAt=end.toISOString();
+  delete b.hadBlocker;
+  if(!$('#executionBlockedToggle').checked)b.blockerReason='';
+  if(mode==='edit'){
+    b.executionId=form.dataset.executionId;
+    delete b.taskId;
+  }
+  try{
+    await api('/api/executions',{method:mode==='edit'?'PATCH':'POST',body:b});
+    closeDialog($('#executionDialog'));
+    setExecutionDialogMode('create');
+    await refreshAll();
+    state.returnToTaskDetailAfterExecution=false;
+    toast(mode==='edit'?'작업 기록을 수정했습니다.':'작업 기록을 저장했습니다.');
+    if(returnToDetail){const latest=state.allTasks.find(t=>String(t.id)===String(taskId));if(latest)await openTaskDetail(latest);}
+  }catch(err){setRequestMessage('execution',err);}
+});
 $('#dailyForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('daily');const b=formDataObject(e.currentTarget);if(state.daily.records.length===0&&!String(b.ruleSnapshot||'').trim()){setMessage('daily','첫날에는 현재 계획 기준을 입력해 주세요.','failure');return;}try{await api('/api/daily',{method:'POST',body:b});closeDialog($('#dailyDialog'));await refreshAll();toast('오늘 회고를 저장했습니다.');}catch(err){setRequestMessage('daily',err);}});
 $('#ruleForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('rule');const b=formDataObject(e.currentTarget);const before=state.daily.records.at(-1)?.rule_snapshot||'';if(String(b.afterRule||'').trim()===String(before).trim()){setMessage('rule','새 기준은 현재 기준과 다르게 입력해 주세요.','failure');return;}try{await api('/api/rule-change',{method:'POST',body:b});closeDialog($('#ruleDialog'));await refreshAll();toast('계획 기준을 수정했습니다.');}catch(err){setRequestMessage('rule',err);}});
 $('#reviewSaveBtn').addEventListener('click',async()=>{if(!state.currentPlanId)return;try{await api('/api/review',{method:'PUT',body:{planId:state.currentPlanId,improvementText:$('#improvementText').value}});await refreshAll();toast('돌아보기를 저장했습니다.');}catch(e){toast(e.message,requestTone(e));}});
