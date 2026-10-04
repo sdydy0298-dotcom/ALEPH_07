@@ -157,9 +157,9 @@ html{scrollbar-gutter:stable}
 .review-metrics .metric-icon.rate{background:#eee3ff;color:#8545ce}
 .good-card .insight-title>span{background:#e3edff;color:#3563e9}.next-card .insight-title>span{background:#ffe9dc;color:#c25a20}
 
-/* v1.1.0 - Task detail Style A */
-.task-detail-style-a{width:min(820px,calc(100vw - 32px));overflow:hidden}
-.task-detail-style-a .dialog-head{padding:24px 28px 20px}
+/* v1.1.2 - Task detail Style A + viewport-safe scrolling */
+.task-detail-style-a{width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden}
+.task-detail-style-a .dialog-head{padding:24px 28px 20px;flex:0 0 auto}
 .task-detail-head-a{align-items:flex-start}
 .task-detail-heading-copy{min-width:0;flex:1}
 .task-detail-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -168,7 +168,7 @@ html{scrollbar-gutter:stable}
 .task-status-pill.in-progress{background:#eaf0ff;color:#3563e9}
 .task-status-pill.done{background:#e8f7ef;color:#21855a}
 .task-detail-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;min-height:22px}
-.task-detail-body-a{padding:20px 28px 22px;overflow:auto}
+.task-detail-body-a{padding:20px 28px 22px;flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .task-detail-description-a{margin:0 0 16px;padding:14px 16px;border:1px solid #e5e9f2;border-radius:12px;background:#f8faff;color:#5f6a82;line-height:1.65}
 .task-detail-summary-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);gap:12px}
 .task-detail-summary-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:16px;min-width:0}
@@ -206,7 +206,7 @@ html{scrollbar-gutter:stable}
 .task-worklog-empty{border:1px dashed #d8deea;border-radius:12px;background:#fafbfd;padding:22px;text-align:center}
 .task-worklog-empty strong{display:block;font-size:13px;color:#4b556f}
 .task-worklog-empty p{margin:4px 0 0;color:#8a91a3;font-size:11px}
-.task-detail-actions-a{justify-content:flex-end}
+.task-detail-actions-a{justify-content:flex-end;flex:0 0 auto;background:#fff}
 .task-detail-actions-a #taskDetailDeleteBtn{margin-right:auto}
 .task-detail-actions-a .button{min-width:104px}
 
