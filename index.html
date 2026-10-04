@@ -330,7 +330,66 @@
     </form>
   </dialog>
 
-  <dialog id="taskDetailDialog" class="dialog modal-dialog"><div class="dialog-card detail-dialog-card task-detail-card"><div class="dialog-head detail-dialog-head"><div><p id="taskDetailPlan" class="eyebrow">할 일</p><h3 id="taskDetailTitle">-</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div class="detail-dialog-body"><p id="taskDetailDescription" class="task-detail-description">메모가 없습니다.</p><dl class="detail-list compact-details"><div><dt>마감일</dt><dd id="taskDetailDue">-</dd></div><div><dt>예상 시간</dt><dd id="taskDetailEstimate">-</dd></div><div><dt>기록 시간</dt><dd id="taskDetailActual">-</dd></div><div><dt>우선순위</dt><dd id="taskDetailPriority">-</dd></div></dl></div><div class="dialog-actions detail-dialog-actions"><button id="taskDetailLogBtn" class="button primary" type="button">작업 기록 남기기</button><button id="taskDetailEditBtn" class="button ghost" type="button">수정</button><button id="taskDetailDeleteBtn" class="button danger-soft" type="button">삭제</button></div></div></dialog>
+  <dialog id="taskDetailDialog" class="dialog modal-dialog">
+    <div class="dialog-card detail-dialog-card task-detail-card task-detail-style-a">
+      <div class="dialog-head detail-dialog-head task-detail-head-a">
+        <div class="task-detail-heading-copy">
+          <p id="taskDetailPlan" class="eyebrow">할 일</p>
+          <div class="task-detail-title-row">
+            <h3 id="taskDetailTitle">-</h3>
+            <span id="taskDetailStatus" class="task-status-pill">진행 중</span>
+          </div>
+          <div id="taskDetailTags" class="task-detail-tags"></div>
+        </div>
+        <button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button>
+      </div>
+
+      <div class="detail-dialog-body task-detail-body-a">
+        <p id="taskDetailDescription" class="task-detail-description task-detail-description-a">메모가 없습니다.</p>
+
+        <div class="task-detail-summary-grid">
+          <section class="task-detail-summary-card task-detail-progress-card" aria-label="할 일 진행 요약">
+            <dl class="task-detail-summary-list">
+              <div><dt>마감일</dt><dd id="taskDetailDue">-</dd></div>
+              <div><dt>예상 시간</dt><dd id="taskDetailEstimate">-</dd></div>
+              <div><dt>기록 시간</dt><dd id="taskDetailActual">-</dd></div>
+            </dl>
+            <div class="task-detail-progress-block">
+              <div class="task-detail-progress-label"><span>기록 진행률</span><strong id="taskDetailProgressText">0%</strong></div>
+              <div class="progress-track task-detail-progress-track"><div id="taskDetailProgressFill" class="progress-fill"></div></div>
+              <small>예상 시간 대비 기록된 작업 시간입니다. 완료 상태와는 별개입니다.</small>
+            </div>
+          </section>
+
+          <section class="task-detail-summary-card" aria-label="할 일 정보">
+            <dl class="task-detail-summary-list">
+              <div><dt>우선순위</dt><dd><span id="taskDetailPriority" class="priority-label medium">보통</span></dd></div>
+              <div><dt>계획</dt><dd id="taskDetailPlanName">-</dd></div>
+              <div><dt>생성일</dt><dd id="taskDetailCreatedAt">-</dd></div>
+              <div><dt>수정일</dt><dd id="taskDetailUpdatedAt">-</dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <section class="task-worklog-section" aria-labelledby="taskWorkLogHeading">
+          <div class="task-worklog-heading">
+            <div>
+              <h4 id="taskWorkLogHeading">작업 기록 <span id="taskDetailLogCount">0건</span></h4>
+              <p>이 할 일을 수행한 기록을 날짜별로 확인할 수 있습니다.</p>
+            </div>
+            <button id="taskDetailLogBtn" class="button primary compact" type="button">+ 작업 기록 남기기</button>
+          </div>
+          <div id="taskDetailWorkLogList" class="task-worklog-list"></div>
+        </section>
+      </div>
+
+      <div class="dialog-actions detail-dialog-actions task-detail-actions-a">
+        <button id="taskDetailDeleteBtn" class="button danger-soft" type="button">삭제</button>
+        <button id="taskDetailEditBtn" class="button ghost" type="button">수정</button>
+        <button id="taskDetailCompleteBtn" class="button primary" type="button">완료 처리</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="executionDialog" class="dialog modal-dialog"><form id="executionForm" class="dialog-card form-dialog-card" method="dialog"><div class="dialog-head"><div><p class="eyebrow">WORK LOG</p><h3>작업 기록 남기기</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div class="form-stack"><label>할 일<select name="taskId" id="executionTaskSelect" required></select></label><div class="form-grid two"><label>시작<input name="startedAt" type="datetime-local" required></label><label>종료<input name="endedAt" type="datetime-local" required></label></div><label>작업 메모<textarea name="note" rows="4" maxlength="800" placeholder="진행한 내용과 이어서 할 작업을 적어주세요."></textarea></label><label class="check-line"><input id="executionBlockedToggle" name="hadBlocker" type="checkbox" value="1"><span>작업 중 막힘 있음</span></label><label id="executionBlockerField" class="hidden">막힌 이유<textarea name="blockerReason" rows="3" maxlength="500" placeholder="문제와 해결에 필요한 내용을 적어주세요."></textarea></label></div><div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog>취소</button><button class="button primary" type="submit">기록 저장</button></div><p class="form-message" data-form-message="execution"></p></form></dialog>
 

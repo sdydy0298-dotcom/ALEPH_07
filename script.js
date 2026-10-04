@@ -25,6 +25,7 @@ const state = {
   evidenceFilter: 'all',
   view: 'overview',
   selectedTaskId: null,
+  returnToTaskDetailAfterExecution: false,
   planStatusFilter: 'all',
   planSearch: '',
   expandedPlanId: null,
@@ -62,6 +63,16 @@ function dateTimeText(value) { if (!value) return '-'; return new Intl.DateTimeF
 function minutesText(value) { const m = Number(value || 0); if (m < 60) return `${m}m`; const h = Math.floor(m / 60); const r = m % 60; return r ? `${h}h ${r}m` : `${h}h`; }
 function percentage(a, b) { return b ? Math.round((a / b) * 100) : 0; }
 function priorityText(value) { return ({ high: '높음', medium: '보통', low: '낮음' })[value] || value || '-'; }
+function taskStatusText(value) { return value === 'done' ? '완료' : '진행 중'; }
+function minuteCountText(value) { return `${Math.max(0, Number(value || 0))}분`; }
+function workLogDateText(value) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit', weekday:'short' }).format(new Date(value));
+}
+function workLogTimeText(value) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('ko-KR', { timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hour12:true }).format(new Date(value));
+}
 function toLocalInput(date) { const d = new Date(date); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function formDataObject(form) { return Object.fromEntries(new FormData(form).entries()); }
 const PASSWORD_MIN_LENGTH = 8;
@@ -536,8 +547,82 @@ async function deleteTask(task){
   try{await api(`/api/tasks?taskId=${encodeURIComponent(task.id)}`,{method:'DELETE'});await refreshAll();toast('할 일을 삭제했습니다.');}catch(e){toast(e.message,requestTone(e));}
 }
 
+function taskExecutions(taskId){
+  return state.allExecutions
+    .filter(ex=>ex.task_id===taskId)
+    .sort((a,b)=>String(b.started_at).localeCompare(String(a.started_at)));
+}
+
+function renderTaskDetail(task){
+  const planName=task.plan_title||planTitle(task.plan_id);
+  const actual=Math.max(0,Number(task.actual_minutes||0));
+  const estimate=Math.max(0,Number(task.estimated_minutes||0));
+  const progress=estimate?Math.round((actual/estimate)*100):0;
+  const logs=taskExecutions(task.id);
+
+  $('#taskDetailPlan').textContent=planName;
+  $('#taskDetailPlanName').textContent=planName;
+  $('#taskDetailTitle').textContent=task.title;
+  $('#taskDetailDescription').textContent=task.description||'메모가 없습니다.';
+  $('#taskDetailDue').textContent=dateText(task.due_date);
+  $('#taskDetailEstimate').textContent=minuteCountText(estimate);
+  $('#taskDetailActual').textContent=minuteCountText(actual);
+  $('#taskDetailProgressText').textContent=`${progress}%`;
+  $('#taskDetailProgressFill').style.width=`${Math.min(progress,100)}%`;
+  $('#taskDetailCreatedAt').textContent=dateText(task.created_at);
+  $('#taskDetailUpdatedAt').textContent=dateText(task.updated_at);
+
+  const priority=$('#taskDetailPriority');
+  priority.textContent=priorityText(task.priority);
+  priority.className=`priority-label ${task.priority||'medium'}`;
+
+  const status=$('#taskDetailStatus');
+  status.textContent=taskStatusText(task.status);
+  status.className=`task-status-pill ${task.status==='done'?'done':'in-progress'}`;
+
+  const tags=$('#taskDetailTags');
+  clear(tags);
+  if(task.tag) tags.append(el('span','task-tag',task.tag));
+
+  $('#taskDetailLogCount').textContent=`${logs.length}건`;
+  const list=$('#taskDetailWorkLogList');
+  clear(list);
+  if(!logs.length){
+    const empty=el('div','task-worklog-empty');
+    empty.append(el('strong','','아직 작업 기록이 없습니다.'),el('p','','이 할 일을 수행할 때마다 작업 기록을 남겨보세요.'));
+    list.append(empty);
+  }else{
+    logs.forEach(ex=>{
+      const row=el('article','task-worklog-row');
+      const dot=el('span',`task-worklog-dot ${ex.blocker_reason?'blocked':''}`);
+      const body=el('div','task-worklog-body');
+      const top=el('div','task-worklog-top');
+      top.append(
+        el('strong','task-worklog-date',workLogDateText(ex.started_at)),
+        el('span','task-worklog-time',`${workLogTimeText(ex.started_at)} → ${workLogTimeText(ex.ended_at)}`),
+        el('span','task-worklog-duration',minuteCountText(ex.actual_minutes))
+      );
+      const note=el('p','task-worklog-note',ex.note||'작업 메모가 없습니다.');
+      const meta=el('div','task-worklog-meta');
+      meta.append(el('span',`task-worklog-blocker ${ex.blocker_reason?'has-blocker':'clear'}`,ex.blocker_reason?`막힘: ${ex.blocker_reason}`:'막힘 없음'));
+      body.append(top,note,meta);
+      row.append(dot,body);
+      list.append(row);
+    });
+  }
+
+  const completeBtn=$('#taskDetailCompleteBtn');
+  completeBtn.textContent=task.status==='done'?'진행 중으로 되돌리기':'완료 처리';
+  completeBtn.classList.toggle('ghost',task.status==='done');
+  completeBtn.classList.toggle('primary',task.status!=='done');
+}
+
 function openTaskDetail(task){
-  if(!task)return;state.selectedTaskId=task.id;$('#taskDetailPlan').textContent=task.plan_title||planTitle(task.plan_id);$('#taskDetailTitle').textContent=task.title;$('#taskDetailDescription').textContent=task.description||'메모가 없습니다.';$('#taskDetailDue').textContent=dateText(task.due_date);$('#taskDetailEstimate').textContent=minutesText(task.estimated_minutes);$('#taskDetailActual').textContent=minutesText(task.actual_minutes);$('#taskDetailPriority').textContent=priorityText(task.priority);openDialog('#taskDetailDialog');
+  if(!task)return;
+  state.selectedTaskId=task.id;
+  const fresh=state.allTasks.find(t=>t.id===task.id)||task;
+  renderTaskDetail(fresh);
+  openDialog('#taskDetailDialog');
 }
 function selectedTask(){return state.allTasks.find(t=>t.id===state.selectedTaskId)||null;}
 
@@ -559,7 +644,7 @@ function openTaskDialog(task=null){
   }
   openDialog('#taskDialog');
 }
-function openExecutionDialog(taskId=''){if(!state.allTasks.length){toast('기록을 남길 할 일이 없습니다.','failure');return;}const f=$('#executionForm');f.reset();renderTaskControls();$('#executionBlockerField').classList.add('hidden');const end=new Date();const start=new Date(end.getTime()-30*60000);f.elements.startedAt.value=toLocalInput(start);f.elements.endedAt.value=toLocalInput(end);if(taskId)f.elements.taskId.value=taskId;setMessage('execution');openDialog('#executionDialog');}
+function openExecutionDialog(taskId='',returnToDetail=false){if(!state.allTasks.length){toast('기록을 남길 할 일이 없습니다.','failure');return;}state.returnToTaskDetailAfterExecution=Boolean(returnToDetail);const f=$('#executionForm');f.reset();renderTaskControls();$('#executionBlockerField').classList.add('hidden');const end=new Date();const start=new Date(end.getTime()-30*60000);f.elements.startedAt.value=toLocalInput(start);f.elements.endedAt.value=toLocalInput(end);if(taskId)f.elements.taskId.value=taskId;setMessage('execution');openDialog('#executionDialog');}
 function openDailyDialog(){setMessage('daily');$('#dailyForm').reset();$('#initialRuleField').classList.toggle('hidden',state.daily.records.length>0);openDialog('#dailyDialog');}
 function openRuleDialog(){const before=state.daily.records.at(-1)?.rule_snapshot||'-';$('#beforeRuleText').textContent=before;$('#ruleForm').reset();setMessage('rule');openDialog('#ruleDialog');}
 
@@ -581,9 +666,10 @@ $('#planSelect').addEventListener('change',async e=>{const next=e.target.value||
 $('#reviewPlanSelect').addEventListener('change',async e=>{const next=e.target.value||null;if(next)await selectPlan(next);});
 $('#planCreateBtn').addEventListener('click',()=>openPlanDialog('create'));
 $('#planEditBtn').addEventListener('click',()=>{closeDialog($('#planDetailDialog'));openPlanDialog('revise');});
-$('#taskDetailLogBtn').addEventListener('click',()=>{const t=selectedTask();if(!t)return;closeDialog($('#taskDetailDialog'));openExecutionDialog(t.id);});
+$('#taskDetailLogBtn').addEventListener('click',()=>{const t=selectedTask();if(!t)return;closeDialog($('#taskDetailDialog'));openExecutionDialog(t.id,true);});
 $('#taskDetailEditBtn').addEventListener('click',()=>{const t=selectedTask();if(!t)return;closeDialog($('#taskDetailDialog'));openTaskDialog(t);});
 $('#taskDetailDeleteBtn').addEventListener('click',()=>{const t=selectedTask();if(!t)return;closeDialog($('#taskDetailDialog'));deleteTask(t);});
+$('#taskDetailCompleteBtn').addEventListener('click',async()=>{const t=selectedTask();if(!t)return;closeDialog($('#taskDetailDialog'));await toggleTask(t);const latest=selectedTask();if(latest)openTaskDetail(latest);});
 $('#planDeleteBtn').addEventListener('click',()=>{const p=currentPlan();if(!p)return;closeDialog($('#planDetailDialog'));$('#planDeleteTarget').textContent=p.title;openDialog('#planDeleteDialog');});
 $$('[data-action="create-plan"]').forEach(x=>x.addEventListener('click',()=>openPlanDialog('create')));
 $('#versionHistoryBtn').addEventListener('click',()=>{closeDialog($('#planDetailDialog'));showVersionHistory();});
@@ -608,7 +694,7 @@ $('#taskSort').addEventListener('change',e=>{state.taskSort=e.target.value;rende
 $('#planForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('plan');const b=formDataObject(e.currentTarget);const mode=b.mode;const nextTask=e.submitter?.dataset.nextTask==='true';delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(b.endDate<b.startDate){setMessage('plan','종료일은 시작일보다 빠를 수 없습니다.','failure');return;}if(mode==='revise')b.planId=state.currentPlanId;try{const result=await api('/api/plans',{method:mode==='revise'?'PATCH':'POST',body:b});if(mode==='create'&&result?.plan?.plan_id)state.currentPlanId=result.plan.plan_id;closeDialog($('#planDialog'));await refreshAll();toast(mode==='revise'?'새 계획 버전을 저장했습니다.':'계획을 만들었습니다.');if(mode==='create'){state.planSearch='';state.planStatusFilter='all';renderPlanList();if(nextTask)openTaskDialog();}}catch(err){setRequestMessage('plan',err);}});
 $('#confirmPlanDeleteBtn').addEventListener('click',async()=>{const p=currentPlan();if(!p)return;const id=p.id;try{await api(`/api/plans?planId=${encodeURIComponent(id)}`,{method:'DELETE'});closeDialog($('#planDeleteDialog'));state.currentPlanId=null;await refreshAll();toast('계획을 삭제했습니다.');}catch(e){toast(e.message,requestTone(e));}});
 $('#taskForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('task');const b=formDataObject(e.currentTarget);const mode=b.mode;delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(mode==='create')delete b.taskId;try{await api('/api/tasks',{method:mode==='edit'?'PATCH':'POST',body:b});closeDialog($('#taskDialog'));await refreshAll();toast(mode==='edit'?'할 일을 수정했습니다.':'할 일을 추가했습니다.');if(mode==='create')openTaskList(b.planId);}catch(err){setRequestMessage('task',err);}});
-$('#executionForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('execution');const b=formDataObject(e.currentTarget);const s=new Date(b.startedAt),end=new Date(b.endedAt);if(Number.isNaN(s.getTime())||Number.isNaN(end.getTime())||end<s){setMessage('execution','종료 시각은 시작 시각보다 빠를 수 없습니다.','failure');return;}b.startedAt=s.toISOString();b.endedAt=end.toISOString();b.actualMinutes=Math.max(0,Math.round((end-s)/60000));delete b.hadBlocker;if(!$('#executionBlockedToggle').checked)b.blockerReason='';try{await api('/api/executions',{method:'POST',body:b});closeDialog($('#executionDialog'));await refreshAll();toast('작업 기록을 저장했습니다.');}catch(err){setRequestMessage('execution',err);}});
+$('#executionForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('execution');const b=formDataObject(e.currentTarget);const taskId=b.taskId;const returnToDetail=state.returnToTaskDetailAfterExecution;const s=new Date(b.startedAt),end=new Date(b.endedAt);if(Number.isNaN(s.getTime())||Number.isNaN(end.getTime())||end<s){setMessage('execution','종료 시각은 시작 시각보다 빠를 수 없습니다.','failure');return;}b.startedAt=s.toISOString();b.endedAt=end.toISOString();b.actualMinutes=Math.max(0,Math.round((end-s)/60000));delete b.hadBlocker;if(!$('#executionBlockedToggle').checked)b.blockerReason='';try{await api('/api/executions',{method:'POST',body:b});closeDialog($('#executionDialog'));await refreshAll();state.returnToTaskDetailAfterExecution=false;toast('작업 기록을 저장했습니다.');if(returnToDetail){const latest=state.allTasks.find(t=>t.id===taskId);if(latest)openTaskDetail(latest);}}catch(err){setRequestMessage('execution',err);}});
 $('#dailyForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('daily');const b=formDataObject(e.currentTarget);if(state.daily.records.length===0&&!String(b.ruleSnapshot||'').trim()){setMessage('daily','첫날에는 현재 계획 기준을 입력해 주세요.','failure');return;}try{await api('/api/daily',{method:'POST',body:b});closeDialog($('#dailyDialog'));await refreshAll();toast('오늘 회고를 저장했습니다.');}catch(err){setRequestMessage('daily',err);}});
 $('#ruleForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('rule');const b=formDataObject(e.currentTarget);const before=state.daily.records.at(-1)?.rule_snapshot||'';if(String(b.afterRule||'').trim()===String(before).trim()){setMessage('rule','새 기준은 현재 기준과 다르게 입력해 주세요.','failure');return;}try{await api('/api/rule-change',{method:'POST',body:b});closeDialog($('#ruleDialog'));await refreshAll();toast('계획 기준을 수정했습니다.');}catch(err){setRequestMessage('rule',err);}});
 $('#reviewSaveBtn').addEventListener('click',async()=>{if(!state.currentPlanId)return;try{await api('/api/review',{method:'PUT',body:{planId:state.currentPlanId,improvementText:$('#improvementText').value}});await refreshAll();toast('돌아보기를 저장했습니다.');}catch(e){toast(e.message,requestTone(e));}});

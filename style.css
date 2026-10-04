@@ -156,3 +156,72 @@ html{scrollbar-gutter:stable}
 .review-metrics .metric-icon.actual{background:#ffe9dc;color:#c25a20}
 .review-metrics .metric-icon.rate{background:#eee3ff;color:#8545ce}
 .good-card .insight-title>span{background:#e3edff;color:#3563e9}.next-card .insight-title>span{background:#ffe9dc;color:#c25a20}
+
+/* v1.1.0 - Task detail Style A */
+.task-detail-style-a{width:min(820px,calc(100vw - 32px));overflow:hidden}
+.task-detail-style-a .dialog-head{padding:24px 28px 20px}
+.task-detail-head-a{align-items:flex-start}
+.task-detail-heading-copy{min-width:0;flex:1}
+.task-detail-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.task-detail-title-row h3{margin:0;font-size:28px;line-height:1.25;letter-spacing:-.9px}
+.task-status-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;white-space:nowrap}
+.task-status-pill.in-progress{background:#eaf0ff;color:#3563e9}
+.task-status-pill.done{background:#e8f7ef;color:#21855a}
+.task-detail-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;min-height:22px}
+.task-detail-body-a{padding:20px 28px 22px;overflow:auto}
+.task-detail-description-a{margin:0 0 16px;padding:14px 16px;border:1px solid #e5e9f2;border-radius:12px;background:#f8faff;color:#5f6a82;line-height:1.65}
+.task-detail-summary-grid{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);gap:12px}
+.task-detail-summary-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:16px;min-width:0}
+.task-detail-summary-list{display:grid;gap:11px;margin:0}
+.task-detail-summary-list>div{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:center}
+.task-detail-summary-list dt{font-size:11px;font-weight:750;color:#7a8296}
+.task-detail-summary-list dd{margin:0;min-width:0;font-size:13px;font-weight:750;color:#26304b;overflow-wrap:anywhere}
+.task-detail-progress-card{display:grid;gap:16px}
+.task-detail-progress-block{padding-top:14px;border-top:1px solid #edf0f5}
+.task-detail-progress-label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.task-detail-progress-label span{font-size:11px;font-weight:750;color:#7a8296}
+.task-detail-progress-label strong{font-size:13px;color:#3563e9}
+.task-detail-progress-track{height:8px;background:#edf0f6}
+.task-detail-progress-block small{display:block;margin-top:8px;color:#8a91a3;font-size:10px;line-height:1.5}
+.task-worklog-section{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.task-worklog-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.task-worklog-heading h4{margin:0;font-size:16px;letter-spacing:-.3px}
+.task-worklog-heading h4 span{color:#3563e9;font-size:13px}
+.task-worklog-heading p{margin:4px 0 0;color:#8a91a3;font-size:11px}
+.task-worklog-list{display:grid;position:relative}
+.task-worklog-row{display:grid;grid-template-columns:16px minmax(0,1fr);gap:10px;position:relative;padding:0 0 10px}
+.task-worklog-row:not(:last-child):before{content:"";position:absolute;left:7px;top:15px;bottom:-2px;width:1px;background:#d9e1f3}
+.task-worklog-dot{width:10px;height:10px;margin-top:17px;margin-left:2px;border-radius:50%;background:#3563e9;box-shadow:0 0 0 3px #eaf0ff;z-index:1}
+.task-worklog-dot.blocked{background:#d46a43;box-shadow:0 0 0 3px #fff0e8}
+.task-worklog-body{min-width:0;border:1px solid #e1e6ef;border-radius:12px;background:#fff;padding:12px 14px}
+.task-worklog-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.task-worklog-date{font-size:12px;color:#27314c}
+.task-worklog-time{font-size:11px;color:#778197}
+.task-worklog-duration{margin-left:auto;display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;background:#edf3ff;color:#3563e9;font-size:10px;font-weight:800}
+.task-worklog-note{margin:7px 0 0;color:#556178;font-size:12px;line-height:1.55}
+.task-worklog-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.task-worklog-blocker{display:inline-flex;align-items:center;max-width:100%;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:750;line-height:1.35}
+.task-worklog-blocker.clear{background:#eef6f2;color:#2a7d5a}
+.task-worklog-blocker.has-blocker{background:#fff0e8;color:#b35d38;white-space:normal}
+.task-worklog-empty{border:1px dashed #d8deea;border-radius:12px;background:#fafbfd;padding:22px;text-align:center}
+.task-worklog-empty strong{display:block;font-size:13px;color:#4b556f}
+.task-worklog-empty p{margin:4px 0 0;color:#8a91a3;font-size:11px}
+.task-detail-actions-a{justify-content:flex-end}
+.task-detail-actions-a #taskDetailDeleteBtn{margin-right:auto}
+.task-detail-actions-a .button{min-width:104px}
+
+@media(max-width:700px){
+  .task-detail-style-a{width:min(100vw - 20px,820px);max-height:calc(100dvh - 20px)}
+  .task-detail-style-a .dialog-head{padding:20px}
+  .task-detail-title-row h3{font-size:23px}
+  .task-detail-body-a{padding:16px 20px 20px}
+  .task-detail-summary-grid{grid-template-columns:1fr}
+  .task-worklog-heading{align-items:flex-start;flex-direction:column}
+  .task-worklog-heading .button{width:100%}
+  .task-worklog-top{align-items:flex-start}
+  .task-worklog-duration{margin-left:0}
+  .task-detail-actions-a{display:grid;grid-template-columns:1fr 1fr}
+  .task-detail-actions-a #taskDetailDeleteBtn{margin-right:0;grid-column:1}
+  .task-detail-actions-a #taskDetailEditBtn{grid-column:2}
+  .task-detail-actions-a #taskDetailCompleteBtn{grid-column:1/-1}
+}
