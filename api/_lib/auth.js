@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { query, withTransaction } from './db.js';
-import { error } from './http.js';
+import { failure, error } from './http.js';
 
 export const SESSION_COOKIE = 'pds_session';
 export const SESSION_HOURS = 8;
@@ -17,7 +17,7 @@ export function validateEmail(email) {
 
 export function validatePassword(password) {
   if (typeof password !== 'string') return '비밀번호를 입력해 주세요.';
-  if (password.length < 12) return '비밀번호는 12자 이상이어야 합니다.';
+  if (password.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
   if (Buffer.byteLength(password, 'utf8') > 72) return '비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.';
   if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
     return '영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해 주세요.';
@@ -113,12 +113,18 @@ export async function getSession(req) {
 }
 
 export async function requireUser(req, res) {
-  const session = await getSession(req);
-  if (!session) {
-    error(res, 401, 'AUTH_REQUIRED', '로그인이 필요한 요청입니다.');
+  try {
+    const session = await getSession(req);
+    if (!session) {
+      failure(res, 401, 'AUTH_REQUIRED', '로그인이 필요한 요청입니다.');
+      return null;
+    }
+    return session;
+  } catch (e) {
+    console.error(e);
+    error(res, 500, 'AUTH_CHECK_FAILED', '로그인 상태를 확인하지 못했습니다.');
     return null;
   }
-  return session;
 }
 
 export async function changePasswordAndRotateSession(req, res, userId, newPasswordHash) {

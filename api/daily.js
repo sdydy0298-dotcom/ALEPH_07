@@ -1,6 +1,6 @@
 import { query, withTransaction } from './_lib/db.js';
 import { requireUser } from './_lib/auth.js';
-import { json,error,methodNotAllowed,readBody,text } from './_lib/http.js';
+import { json,failure,error,methodNotAllowed,readBody,text } from './_lib/http.js';
 
 export default async function handler(req,res){
   const user=await requireUser(req,res); if(!user)return;
@@ -12,7 +12,7 @@ export default async function handler(req,res){
     }
     if(req.method==='POST'){
       const b=readBody(req),summary=text(b.summary,800),candidate=text(b.ruleSnapshot,300);
-      if(!summary)return error(res,400,'SUMMARY_REQUIRED','오늘 기록을 입력해 주세요.');
+      if(!summary)return failure(res,400,'SUMMARY_REQUIRED','오늘 기록을 입력해 주세요.');
       const result=await withTransaction(async client=>{
         const todayR=await client.query(`SELECT (NOW() AT TIME ZONE 'Asia/Seoul')::date AS today`);
         const today=todayR.rows[0].today;
@@ -43,9 +43,9 @@ export default async function handler(req,res){
           RETURNING *`,[user.id,today,summary,rule,question,metricName,metricUnit,metricValue,calculationRule]);
         return {record:saved.rows[0],updated:Boolean(same)};
       });
-      if(result.tooMany)return error(res,409,'FIVE_DAYS_COMPLETE','서로 다른 실제 날짜 5일 기록이 이미 완성되었습니다.');
-      if(result.ruleChangeRequired)return error(res,409,'RULE_CHANGE_REQUIRED','3일차 기록 전에 계획 규칙을 한 번 변경해야 합니다.');
-      if(result.ruleRequired)return error(res,400,'INITIAL_RULE_REQUIRED','첫날에는 현재 계획 규칙을 입력해 주세요.');
+      if(result.tooMany)return failure(res,409,'FIVE_DAYS_COMPLETE','서로 다른 실제 날짜 5일 기록이 이미 완성되었습니다.');
+      if(result.ruleChangeRequired)return failure(res,409,'RULE_CHANGE_REQUIRED','3일차 기록 전에 계획 규칙을 한 번 변경해야 합니다.');
+      if(result.ruleRequired)return failure(res,400,'INITIAL_RULE_REQUIRED','첫날에는 현재 계획 규칙을 입력해 주세요.');
       return json(res,result.updated?200:201,{ok:true,...result});
     }
     return methodNotAllowed(res,['GET','POST']);

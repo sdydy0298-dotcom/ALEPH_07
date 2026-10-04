@@ -1,6 +1,6 @@
 import { query, withTransaction } from './_lib/db.js';
 import { requireUser } from './_lib/auth.js';
-import { json, error, methodNotAllowed, readBody, text, integer, isoDate } from './_lib/http.js';
+import { json, failure, error, methodNotAllowed, readBody, text, integer, isoDate } from './_lib/http.js';
 
 const PRIORITIES = new Set(['low','medium','high']);
 
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const body = readBody(req);
       const v = validatePlanInput(body);
-      if (v.error) return error(res, 400, 'INVALID_PLAN', v.error);
+      if (v.error) return failure(res,400, 'INVALID_PLAN', v.error);
       const created = await withTransaction(async (client) => {
         const p = await client.query('INSERT INTO plans(user_id) VALUES($1) RETURNING id, current_version_no, created_at', [user.id]);
         const plan = p.rows[0];
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       const body = readBody(req);
       const planId = text(body.planId, 64);
       const v = validatePlanInput(body);
-      if (!planId || v.error) return error(res, 400, 'INVALID_PLAN', v.error || '계획을 선택해 주세요.');
+      if (!planId || v.error) return failure(res,400, 'INVALID_PLAN', v.error || '계획을 선택해 주세요.');
       const updated = await withTransaction(async (client) => {
         const locked = await client.query('SELECT id, current_version_no FROM plans WHERE id=$1 AND user_id=$2 FOR UPDATE', [planId, user.id]);
         if (!locked.rows[0]) return null;
@@ -73,15 +73,15 @@ export default async function handler(req, res) {
         await client.query('UPDATE plans SET current_version_no=$2, updated_at=NOW() WHERE id=$1', [planId, nextVersion]);
         return pv.rows[0];
       });
-      if (!updated) return error(res, 404, 'PLAN_NOT_FOUND', '계획을 찾을 수 없습니다.');
+      if (!updated) return failure(res,404, 'PLAN_NOT_FOUND', '계획을 찾을 수 없습니다.');
       return json(res, 200, { ok: true, version: updated });
     }
 
     if (req.method === 'DELETE') {
       const planId = text(req.query?.planId, 64);
-      if (!planId) return error(res, 400, 'PLAN_REQUIRED', '계획을 선택해 주세요.');
+      if (!planId) return failure(res,400, 'PLAN_REQUIRED', '계획을 선택해 주세요.');
       const r = await query('DELETE FROM plans WHERE id=$1 AND user_id=$2 RETURNING id', [planId, user.id]);
-      if (!r.rows[0]) return error(res, 404, 'PLAN_NOT_FOUND', '계획을 찾을 수 없습니다.');
+      if (!r.rows[0]) return failure(res,404, 'PLAN_NOT_FOUND', '계획을 찾을 수 없습니다.');
       return json(res, 200, { ok: true });
     }
 

@@ -64,6 +64,14 @@ function percentage(a, b) { return b ? Math.round((a / b) * 100) : 0; }
 function priorityText(value) { return ({ high: '높음', medium: '보통', low: '낮음' })[value] || value || '-'; }
 function toLocalInput(date) { const d = new Date(date); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
 function formDataObject(form) { return Object.fromEntries(new FormData(form).entries()); }
+const PASSWORD_MIN_LENGTH = 8;
+function validatePasswordValue(password) {
+  const value = String(password ?? '');
+  if (value.length < PASSWORD_MIN_LENGTH) return `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 합니다.`;
+  if (new TextEncoder().encode(value).length > 72) return '비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.';
+  if (!/[a-z]/.test(value) || !/[A-Z]/.test(value) || !/[0-9]/.test(value) || !/[^A-Za-z0-9]/.test(value)) return '영문 대/소문자, 숫자, 특수문자를 각각 1개 이상 포함해 주세요.';
+  return '';
+}
 function currentPlan() { return state.plans.find(p => p.id === state.currentPlanId) || null; }
 function planTitle(planId) { return state.plans.find(p => p.id === planId)?.title || '연결된 계획'; }
 
@@ -74,12 +82,15 @@ function toast(message, type = 'success') {
   setTimeout(() => item.remove(), 3200);
 }
 
-function setMessage(name, message = '', success = false) {
+function setMessage(name, message = '', tone = 'failure') {
   const target = $(`[data-form-message="${name}"]`);
   if (!target) return;
+  const resolvedTone = tone === true ? 'success' : tone;
   target.textContent = message;
-  target.style.color = success ? 'var(--teal)' : 'var(--red)';
+  target.style.color = resolvedTone === 'success' ? 'var(--primary)' : resolvedTone === 'error' ? 'var(--red)' : 'var(--orange)';
 }
+function setRequestMessage(name, err) { setMessage(name, err?.message || '요청을 처리하지 못했습니다.', err?.kind === 'error' ? 'error' : 'failure'); }
+function requestTone(err) { return err?.kind === 'error' ? 'error' : 'failure'; }
 
 async function api(path, options = {}) {
   const init = { method: options.method || 'GET', headers: { 'Accept': 'application/json' } };
@@ -91,11 +102,13 @@ async function api(path, options = {}) {
   const contentType = response.headers.get('content-type') || '';
   const data = contentType.includes('application/json') ? await response.json() : null;
   if (!response.ok) {
-    const err = new Error(data?.error?.message || `요청 실패 (${response.status})`);
+    const detail = data?.failure || data?.error || null;
+    const err = new Error(detail?.message || `요청 실패 (${response.status})`);
     err.status = response.status;
-    err.code = data?.error?.code;
+    err.code = detail?.code;
+    err.kind = data?.kind || (response.status >= 500 ? 'error' : 'failure');
     err.data = data;
-    if (response.status === 401 && !path.includes('action=login') && !path.includes('action=signup')) showAuth();
+    if (response.status === 401 && err.code === 'AUTH_REQUIRED') showAuth();
     throw err;
   }
   return data;
@@ -516,11 +529,11 @@ async function refreshAll(){await loadPlans();renderPlanSelect();await Promise.a
 
 async function toggleTask(task){
   const completing=task.status!=='done';
-  try{await api('/api/tasks',{method:'PATCH',body:{taskId:task.id,status:task.status==='done'?'in_progress':'done'}});await refreshAll();if(completing)notifyTaskComplete(task);}catch(e){toast(e.message,'error');}
+  try{await api('/api/tasks',{method:'PATCH',body:{taskId:task.id,status:task.status==='done'?'in_progress':'done'}});await refreshAll();if(completing)notifyTaskComplete(task);}catch(e){toast(e.message,requestTone(e));}
 }
 async function deleteTask(task){
   if(!confirm(`"${task.title}" 할 일을 삭제할까요?`))return;
-  try{await api(`/api/tasks?taskId=${encodeURIComponent(task.id)}`,{method:'DELETE'});await refreshAll();toast('할 일을 삭제했습니다.');}catch(e){toast(e.message,'error');}
+  try{await api(`/api/tasks?taskId=${encodeURIComponent(task.id)}`,{method:'DELETE'});await refreshAll();toast('할 일을 삭제했습니다.');}catch(e){toast(e.message,requestTone(e));}
 }
 
 function openTaskDetail(task){
@@ -546,20 +559,20 @@ function openTaskDialog(task=null){
   }
   openDialog('#taskDialog');
 }
-function openExecutionDialog(taskId=''){if(!state.allTasks.length){toast('기록을 남길 할 일이 없습니다.','error');return;}const f=$('#executionForm');f.reset();renderTaskControls();$('#executionBlockerField').classList.add('hidden');const end=new Date();const start=new Date(end.getTime()-30*60000);f.elements.startedAt.value=toLocalInput(start);f.elements.endedAt.value=toLocalInput(end);if(taskId)f.elements.taskId.value=taskId;setMessage('execution');openDialog('#executionDialog');}
+function openExecutionDialog(taskId=''){if(!state.allTasks.length){toast('기록을 남길 할 일이 없습니다.','failure');return;}const f=$('#executionForm');f.reset();renderTaskControls();$('#executionBlockerField').classList.add('hidden');const end=new Date();const start=new Date(end.getTime()-30*60000);f.elements.startedAt.value=toLocalInput(start);f.elements.endedAt.value=toLocalInput(end);if(taskId)f.elements.taskId.value=taskId;setMessage('execution');openDialog('#executionDialog');}
 function openDailyDialog(){setMessage('daily');$('#dailyForm').reset();$('#initialRuleField').classList.toggle('hidden',state.daily.records.length>0);openDialog('#dailyDialog');}
 function openRuleDialog(){const before=state.daily.records.at(-1)?.rule_snapshot||'-';$('#beforeRuleText').textContent=before;$('#ruleForm').reset();setMessage('rule');openDialog('#ruleDialog');}
 
-async function showVersionHistory(){const p=currentPlan();if(!p)return;try{const data=await api(`/api/plan-versions?planId=${encodeURIComponent(p.id)}`);const list=$('#versionList');clear(list);data.versions.forEach(v=>{const row=el('article','version-row');const head=el('header');head.append(el('strong','',`v${v.version_no} · ${v.title}`),el('span','',dateTimeText(v.created_at)));row.append(head,el('p','',`${dateText(v.start_date)} — ${dateText(v.end_date)} · ${priorityText(v.priority)} · ${minutesText(v.estimated_minutes)}`),el('p','',`성공 기준: ${v.success_criteria}`));if(v.carried_improvement)row.append(el('p','',`가져온 개선점: ${v.carried_improvement}`));list.append(row);});openDialog('#versionDialog');}catch(e){toast(e.message,'error');}}
+async function showVersionHistory(){const p=currentPlan();if(!p)return;try{const data=await api(`/api/plan-versions?planId=${encodeURIComponent(p.id)}`);const list=$('#versionList');clear(list);data.versions.forEach(v=>{const row=el('article','version-row');const head=el('header');head.append(el('strong','',`v${v.version_no} · ${v.title}`),el('span','',dateTimeText(v.created_at)));row.append(head,el('p','',`${dateText(v.start_date)} — ${dateText(v.end_date)} · ${priorityText(v.priority)} · ${minutesText(v.estimated_minutes)}`),el('p','',`성공 기준: ${v.success_criteria}`));if(v.carried_improvement)row.append(el('p','',`가져온 개선점: ${v.carried_improvement}`));list.append(row);});openDialog('#versionDialog');}catch(e){toast(e.message,requestTone(e));}}
 
 async function boot(){
-  try{const me=await api('/api/auth?action=me');state.user=me.user;showApp();setUserUI();await refreshAll();switchView('overview');}
+  try{const me=await api('/api/auth?action=me');if(!me?.authenticated){showAuth();return;}state.user=me.user;showApp();setUserUI();await refreshAll();switchView('overview');}
   catch(e){showAuth();}
 }
 
 $$('[data-auth-tab]').forEach(btn=>btn.addEventListener('click',()=>switchAuthTab(btn.dataset.authTab)));
-$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();setMessage('login');const form=e.currentTarget;const b=formDataObject(form);try{const r=await api('/api/auth?action=login',{method:'POST',body:b});state.user={id:r.user.id,email:r.user.email,displayName:r.user.display_name};showApp();setUserUI();await refreshAll();form.reset();toast('로그인했습니다.');}catch(err){form.elements.password.value='';setMessage('login',err.message);}});
-$('#signupForm').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();setMessage('signup');const form=e.currentTarget;const b=formDataObject(form);try{const r=await api('/api/auth?action=signup',{method:'POST',body:b});state.user={id:r.user.id,email:r.user.email,displayName:r.user.display_name};showApp();setUserUI();await refreshAll();form.reset();toast('계정을 만들었습니다.');}catch(err){form.elements.password.value='';setMessage('signup',err.message);}});
+$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();setMessage('login');const form=e.currentTarget;const b=formDataObject(form);try{const r=await api('/api/auth?action=login',{method:'POST',body:b});state.user={id:r.user.id,email:r.user.email,displayName:r.user.display_name};showApp();setUserUI();await refreshAll();form.reset();toast('로그인했습니다.');}catch(err){form.elements.password.value='';setRequestMessage('login',err);}});
+$('#signupForm').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();setMessage('signup');const form=e.currentTarget;const b=formDataObject(form);const passwordFailure=validatePasswordValue(b.password);if(passwordFailure){setMessage('signup',passwordFailure,'failure');return;}try{const r=await api('/api/auth?action=signup',{method:'POST',body:b});state.user={id:r.user.id,email:r.user.email,displayName:r.user.display_name};showApp();setUserUI();await refreshAll();form.reset();toast('계정을 만들었습니다.');}catch(err){form.elements.password.value='';setRequestMessage('signup',err);}});
 
 $$('.nav-item').forEach(btn=>btn.addEventListener('click',()=>switchView(btn.dataset.view)));
 $$('[data-go]').forEach(btn=>btn.addEventListener('click',()=>switchView(btn.dataset.go)));
@@ -592,19 +605,19 @@ $('#priorityFilter').addEventListener('change',e=>{state.priorityFilter=e.target
 $('#tagFilter').addEventListener('change',e=>{state.tagFilter=e.target.value;state.taskPage=1;renderTasks();});
 $('#taskSort').addEventListener('change',e=>{state.taskSort=e.target.value;renderTasks();});
 
-$('#planForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('plan');const b=formDataObject(e.currentTarget);const mode=b.mode;const nextTask=e.submitter?.dataset.nextTask==='true';delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(mode==='revise')b.planId=state.currentPlanId;try{const result=await api('/api/plans',{method:mode==='revise'?'PATCH':'POST',body:b});if(mode==='create'&&result?.plan?.plan_id)state.currentPlanId=result.plan.plan_id;closeDialog($('#planDialog'));await refreshAll();toast(mode==='revise'?'새 계획 버전을 저장했습니다.':'계획을 만들었습니다.');if(mode==='create'){state.planSearch='';state.planStatusFilter='all';renderPlanList();if(nextTask)openTaskDialog();}}catch(err){setMessage('plan',err.message);}});
-$('#confirmPlanDeleteBtn').addEventListener('click',async()=>{const p=currentPlan();if(!p)return;const id=p.id;try{await api(`/api/plans?planId=${encodeURIComponent(id)}`,{method:'DELETE'});closeDialog($('#planDeleteDialog'));state.currentPlanId=null;await refreshAll();toast('계획을 삭제했습니다.');}catch(e){toast(e.message,'error');}});
-$('#taskForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('task');const b=formDataObject(e.currentTarget);const mode=b.mode;delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(mode==='create')delete b.taskId;try{await api('/api/tasks',{method:mode==='edit'?'PATCH':'POST',body:b});closeDialog($('#taskDialog'));await refreshAll();toast(mode==='edit'?'할 일을 수정했습니다.':'할 일을 추가했습니다.');if(mode==='create')openTaskList(b.planId);}catch(err){setMessage('task',err.message);}});
-$('#executionForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('execution');const b=formDataObject(e.currentTarget);const s=new Date(b.startedAt),end=new Date(b.endedAt);b.startedAt=s.toISOString();b.endedAt=end.toISOString();b.actualMinutes=Math.max(0,Math.round((end-s)/60000));delete b.hadBlocker;if(!$('#executionBlockedToggle').checked)b.blockerReason='';try{await api('/api/executions',{method:'POST',body:b});closeDialog($('#executionDialog'));await refreshAll();toast('작업 기록을 저장했습니다.');}catch(err){setMessage('execution',err.message);}});
-$('#dailyForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('daily');const b=formDataObject(e.currentTarget);try{await api('/api/daily',{method:'POST',body:b});closeDialog($('#dailyDialog'));await refreshAll();toast('오늘 회고를 저장했습니다.');}catch(err){setMessage('daily',err.message);}});
-$('#ruleForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('rule');const b=formDataObject(e.currentTarget);try{await api('/api/rule-change',{method:'POST',body:b});closeDialog($('#ruleDialog'));await refreshAll();toast('계획 기준을 수정했습니다.');}catch(err){setMessage('rule',err.message);}});
-$('#reviewSaveBtn').addEventListener('click',async()=>{if(!state.currentPlanId)return;try{await api('/api/review',{method:'PUT',body:{planId:state.currentPlanId,improvementText:$('#improvementText').value}});await refreshAll();toast('돌아보기를 저장했습니다.');}catch(e){toast(e.message,'error');}});
-$('#createPlanFromReviewBtn').addEventListener('click',()=>{const memo=$('#improvementText').value.trim();if(!memo){toast('먼저 다음에 바꿀 내용을 적어 주세요.','error');return;}openPlanDialog('create');const form=$('#planForm');form.elements.carriedImprovement.value=memo;const details=form.querySelector('.optional-fields');if(details)details.open=true;});
+$('#planForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('plan');const b=formDataObject(e.currentTarget);const mode=b.mode;const nextTask=e.submitter?.dataset.nextTask==='true';delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(b.endDate<b.startDate){setMessage('plan','종료일은 시작일보다 빠를 수 없습니다.','failure');return;}if(mode==='revise')b.planId=state.currentPlanId;try{const result=await api('/api/plans',{method:mode==='revise'?'PATCH':'POST',body:b});if(mode==='create'&&result?.plan?.plan_id)state.currentPlanId=result.plan.plan_id;closeDialog($('#planDialog'));await refreshAll();toast(mode==='revise'?'새 계획 버전을 저장했습니다.':'계획을 만들었습니다.');if(mode==='create'){state.planSearch='';state.planStatusFilter='all';renderPlanList();if(nextTask)openTaskDialog();}}catch(err){setRequestMessage('plan',err);}});
+$('#confirmPlanDeleteBtn').addEventListener('click',async()=>{const p=currentPlan();if(!p)return;const id=p.id;try{await api(`/api/plans?planId=${encodeURIComponent(id)}`,{method:'DELETE'});closeDialog($('#planDeleteDialog'));state.currentPlanId=null;await refreshAll();toast('계획을 삭제했습니다.');}catch(e){toast(e.message,requestTone(e));}});
+$('#taskForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('task');const b=formDataObject(e.currentTarget);const mode=b.mode;delete b.mode;b.estimatedMinutes=Number(b.estimatedMinutes);if(mode==='create')delete b.taskId;try{await api('/api/tasks',{method:mode==='edit'?'PATCH':'POST',body:b});closeDialog($('#taskDialog'));await refreshAll();toast(mode==='edit'?'할 일을 수정했습니다.':'할 일을 추가했습니다.');if(mode==='create')openTaskList(b.planId);}catch(err){setRequestMessage('task',err);}});
+$('#executionForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('execution');const b=formDataObject(e.currentTarget);const s=new Date(b.startedAt),end=new Date(b.endedAt);if(Number.isNaN(s.getTime())||Number.isNaN(end.getTime())||end<s){setMessage('execution','종료 시각은 시작 시각보다 빠를 수 없습니다.','failure');return;}b.startedAt=s.toISOString();b.endedAt=end.toISOString();b.actualMinutes=Math.max(0,Math.round((end-s)/60000));delete b.hadBlocker;if(!$('#executionBlockedToggle').checked)b.blockerReason='';try{await api('/api/executions',{method:'POST',body:b});closeDialog($('#executionDialog'));await refreshAll();toast('작업 기록을 저장했습니다.');}catch(err){setRequestMessage('execution',err);}});
+$('#dailyForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('daily');const b=formDataObject(e.currentTarget);if(state.daily.records.length===0&&!String(b.ruleSnapshot||'').trim()){setMessage('daily','첫날에는 현재 계획 기준을 입력해 주세요.','failure');return;}try{await api('/api/daily',{method:'POST',body:b});closeDialog($('#dailyDialog'));await refreshAll();toast('오늘 회고를 저장했습니다.');}catch(err){setRequestMessage('daily',err);}});
+$('#ruleForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('rule');const b=formDataObject(e.currentTarget);const before=state.daily.records.at(-1)?.rule_snapshot||'';if(String(b.afterRule||'').trim()===String(before).trim()){setMessage('rule','새 기준은 현재 기준과 다르게 입력해 주세요.','failure');return;}try{await api('/api/rule-change',{method:'POST',body:b});closeDialog($('#ruleDialog'));await refreshAll();toast('계획 기준을 수정했습니다.');}catch(err){setRequestMessage('rule',err);}});
+$('#reviewSaveBtn').addEventListener('click',async()=>{if(!state.currentPlanId)return;try{await api('/api/review',{method:'PUT',body:{planId:state.currentPlanId,improvementText:$('#improvementText').value}});await refreshAll();toast('돌아보기를 저장했습니다.');}catch(e){toast(e.message,requestTone(e));}});
+$('#createPlanFromReviewBtn').addEventListener('click',()=>{const memo=$('#improvementText').value.trim();if(!memo){toast('먼저 다음에 바꿀 내용을 적어 주세요.','failure');return;}openPlanDialog('create');const form=$('#planForm');form.elements.carriedImprovement.value=memo;const details=form.querySelector('.optional-fields');if(details)details.open=true;});
 
 $('#logoutBtn').addEventListener('click',async()=>{try{await api('/api/auth?action=logout',{method:'POST'});}catch{}showAuth();toast('로그아웃했습니다.');});
-$('#passwordForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('password');try{const r=await api('/api/auth?action=password',{method:'PATCH',body:formDataObject(e.currentTarget)});e.currentTarget.reset();setMessage('password',r.message,true);toast('비밀번호를 변경했습니다.');}catch(err){setMessage('password',err.message);}});
-$('#deleteAccountForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('delete');if(!confirm('계정과 모든 기록을 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.'))return;try{await api('/api/auth?action=account',{method:'DELETE',body:formDataObject(e.currentTarget)});showAuth();toast('계정을 삭제했습니다.');}catch(err){setMessage('delete',err.message);}});
-$('#exportBtn').addEventListener('click',async()=>{try{const response=await fetch('/api/export');if(!response.ok){const d=await response.json();throw new Error(d?.error?.message||'내보내기 실패');}const blob=await response.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`plandosee-export-${kstToday()}.json`;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);toast('내보내기 파일을 만들었습니다.');}catch(e){toast(e.message,'error');}});
+$('#passwordForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('password');const form=e.currentTarget;const b=formDataObject(form);const passwordFailure=validatePasswordValue(b.newPassword);if(passwordFailure){setMessage('password',passwordFailure,'failure');return;}if(b.currentPassword===b.newPassword){setMessage('password','새 비밀번호는 기존 비밀번호와 달라야 합니다.','failure');return;}try{const r=await api('/api/auth?action=password',{method:'PATCH',body:b});form.reset();setMessage('password',r.message,'success');toast('비밀번호를 변경했습니다.');}catch(err){setRequestMessage('password',err);}});
+$('#deleteAccountForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('delete');if(!confirm('계정과 모든 기록을 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.'))return;try{await api('/api/auth?action=account',{method:'DELETE',body:formDataObject(e.currentTarget)});showAuth();toast('계정을 삭제했습니다.');}catch(err){setRequestMessage('delete',err);}});
+$('#exportBtn').addEventListener('click',async()=>{try{const response=await fetch('/api/export');if(!response.ok){const d=await response.json();const detail=d?.failure||d?.error;const err=new Error(detail?.message||'내보내기 실패');err.kind=d?.kind||(response.status>=500?'error':'failure');throw err;}const blob=await response.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`plandosee-export-${kstToday()}.json`;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);toast('내보내기 파일을 만들었습니다.');}catch(e){toast(e.message,requestTone(e));}});
 
 window.addEventListener('keydown',e=>{if(e.key==='Escape')$('#appShell').classList.remove('menu-open');});
 $$('[data-home-filter]').forEach(b=>b.onclick=()=>{state.homeFilter=b.dataset.homeFilter;renderHomeTasks();});

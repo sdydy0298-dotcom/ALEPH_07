@@ -9,13 +9,17 @@ export function json(res, status, data) {
   return res.status(status).json(data);
 }
 
+export function failure(res, status, code, message, extra = {}) {
+  return json(res, status, { ok: false, kind: 'failure', failure: { code, message, ...extra } });
+}
+
 export function error(res, status, code, message, extra = {}) {
-  return json(res, status, { ok: false, error: { code, message, ...extra } });
+  return json(res, status, { ok: false, kind: 'error', error: { code, message, ...extra } });
 }
 
 export function methodNotAllowed(res, allowed) {
   res.setHeader('Allow', allowed.join(', '));
-  return error(res, 405, 'METHOD_NOT_ALLOWED', '지원하지 않는 요청 방식입니다.');
+  return failure(res, 405, 'METHOD_NOT_ALLOWED', '지원하지 않는 요청 방식입니다.');
 }
 
 export function readBody(req) {
