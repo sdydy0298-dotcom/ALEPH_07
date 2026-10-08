@@ -182,6 +182,7 @@ function setUserUI() {
   $('#profileEmail').textContent = email;
   $('#settingsProfileName').textContent = name;
   $('#settingsProfileEmail').textContent = email;
+  $('#settingsProfileAvatar').textContent = name.slice(0, 1).toUpperCase();
   $('#profileAvatar').textContent = name.slice(0, 1).toUpperCase();
   $('#overviewGreeting').textContent = '오늘의 할 일';
 }
