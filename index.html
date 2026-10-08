@@ -399,7 +399,41 @@
 
   <dialog id="versionDialog" class="dialog modal-dialog"><div class="dialog-card"><div class="dialog-head"><div><p class="eyebrow">VERSION HISTORY</p><h3>버전 기록</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div id="versionList" class="version-list"></div></div></dialog>
 
-  <dialog id="settingsDialog" class="dialog modal-dialog"><div class="dialog-card settings-card"><div class="dialog-head"><div><p class="eyebrow">ACCOUNT</p><h3>계정 및 데이터</h3></div><button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button></div><div class="settings-grid"><section><h4>내 계정</h4><p><strong id="settingsProfileName">사용자</strong></p><p id="settingsProfileEmail">-</p></section><section><h4>내 데이터 내보내기</h4><p>계획·할 일·작업 기록·회고를 JSON 파일 하나로 저장합니다.</p><button id="exportBtn" class="button ghost" type="button">내보내기</button></section><section><h4>로그아웃</h4><p>현재 브라우저의 로그인 세션을 종료합니다.</p><button id="logoutBtn" class="button ghost" type="button">로그아웃</button></section><section><h4>비밀번호 변경</h4><form id="passwordForm" method="post"><label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" required></label><label>새 비밀번호<input name="newPassword" type="password" autocomplete="new-password" minlength="8" required></label><p class="field-help">영문 대문자·소문자, 숫자, 특수문자를 포함해 8자 이상 입력하세요.</p><button class="button ghost" type="submit">변경</button><p class="form-message" data-form-message="password"></p></form></section><section class="danger-zone"><h4>계정 삭제</h4><p>계정을 삭제하면 내 계획과 기록도 함께 삭제됩니다.</p><form id="deleteAccountForm" method="post"><label>비밀번호 확인<input name="password" type="password" autocomplete="current-password" required></label><button class="button danger" type="submit">계정과 데이터 삭제</button><p class="form-message" data-form-message="delete"></p></form></section></div></div></dialog>
+  <dialog id="settingsDialog" class="dialog modal-dialog">
+    <div class="dialog-card settings-card account-settings">
+      <div class="dialog-head account-settings-head">
+        <div><p class="eyebrow">ACCOUNT SETTINGS</p><h3>계정 설정</h3><p class="account-head-description">내 정보와 보안, 데이터를 관리하세요.</p></div>
+        <button class="dialog-close" type="button" aria-label="닫기" data-close-dialog>×</button>
+      </div>
+      <div class="account-settings-body">
+        <section class="account-identity" aria-label="내 계정 정보">
+          <div class="account-identity-avatar" id="settingsProfileAvatar" aria-hidden="true">U</div>
+          <div class="account-identity-details">
+            <p class="account-section-kicker">MY ACCOUNT</p>
+            <dl class="account-info-list">
+              <div><dt>이름</dt><dd id="settingsProfileName">사용자</dd></div>
+              <div><dt>이메일</dt><dd id="settingsProfileEmail">-</dd></div>
+            </dl>
+          </div>
+        </section>
+        <div class="account-section-heading"><span class="account-section-icon" aria-hidden="true">⌁</span><div><h4>보안 설정</h4><p>로그인 비밀번호를 안전하게 변경할 수 있습니다.</p></div></div>
+        <section class="account-panel account-security">
+          <form id="passwordForm" method="post" class="account-password-form">
+            <label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" required placeholder="현재 비밀번호 입력"></label>
+            <label>새 비밀번호<input name="newPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="새 비밀번호 입력"></label>
+            <p class="field-help">영문 대·소문자, 숫자, 특수문자를 포함해 8자 이상 입력하세요.</p>
+            <div class="account-action-line"><p class="form-message" data-form-message="password"></p><button class="button primary" type="submit">비밀번호 변경</button></div>
+          </form>
+        </section>
+        <div class="account-section-heading"><span class="account-section-icon" aria-hidden="true">▤</span><div><h4>데이터 관리</h4><p>내 기록을 보관하거나 계정을 정리할 수 있습니다.</p></div></div>
+        <section class="account-panel account-action-list">
+          <div class="account-setting-row"><div><h5>내 데이터 내보내기</h5><p>계획·할 일·작업 기록·회고를 JSON 파일로 저장합니다.</p></div><button id="exportBtn" class="button ghost" type="button">내보내기</button></div>
+          <div class="account-setting-row"><div><h5>로그아웃</h5><p>현재 브라우저의 로그인 세션을 종료합니다.</p></div><button id="logoutBtn" class="button ghost" type="button">로그아웃</button></div>
+          <div class="account-setting-row account-delete-row"><div><h5>계정 삭제</h5><p>계정을 삭제하면 연결된 계획과 기록도 삭제되며 복구할 수 없습니다.</p></div><form id="deleteAccountForm" method="post" class="account-delete-form"><label class="visually-hidden" for="accountDeletePassword">비밀번호 확인</label><input id="accountDeletePassword" name="password" type="password" autocomplete="current-password" required placeholder="현재 비밀번호 확인"><button class="button danger" type="submit">계정 삭제</button><p class="form-message" data-form-message="delete"></p></form></div>
+        </section>
+      </div>
+    </div>
+  </dialog>
 
   <script src="./script.js" defer></script>
 </body>
