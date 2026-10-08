@@ -180,6 +180,8 @@ function setUserUI() {
   const email = state.user?.email || '-';
   $('#profileName').textContent = name;
   $('#profileEmail').textContent = email;
+  $('#settingsProfileName').textContent = name;
+  $('#settingsProfileEmail').textContent = email;
   $('#profileAvatar').textContent = name.slice(0, 1).toUpperCase();
   $('#overviewGreeting').textContent = '오늘의 할 일';
 }
@@ -748,7 +750,7 @@ async function boot(){
 
 $$('[data-auth-tab]').forEach(btn=>btn.addEventListener('click',()=>switchAuthTab(btn.dataset.authTab)));
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();setMessage('login');const form=e.currentTarget;const b=formDataObject(form);try{const r=await api('/api/auth?action=login',{method:'POST',body:b});state.user={id:r.user.id,email:r.user.email,displayName:r.user.display_name};showApp();setUserUI();await refreshAll();form.reset();toast('로그인했습니다.');}catch(err){form.elements.password.value='';setRequestMessage('login',err);}});
-$('#signupForm').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();setMessage('signup');const form=e.currentTarget;const b=formDataObject(form);const passwordFailure=validatePasswordValue(b.password);if(passwordFailure){setMessage('signup',passwordFailure,'failure');return;}try{const r=await api('/api/auth?action=signup',{method:'POST',body:b});state.user={id:r.user.id,email:r.user.email,displayName:r.user.display_name};showApp();setUserUI();await refreshAll();form.reset();toast('계정을 만들었습니다.');}catch(err){form.elements.password.value='';setRequestMessage('signup',err);}});
+$('#signupForm').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();setMessage('signup');const form=e.currentTarget;const b=formDataObject(form);const passwordFailure=validatePasswordValue(b.password);if(passwordFailure){setMessage('signup',passwordFailure,'failure');return;}try{const r=await api('/api/auth?action=signup',{method:'POST',body:b});switchAuthTab('login');$('#loginForm').elements.email.value=b.email;$('#loginForm').elements.password.value='';form.reset();setMessage('login','회원가입이 완료되었습니다. 로그인해 주세요.','success');toast('회원가입이 완료되었습니다. 로그인해 주세요.');$('#loginForm').elements.password.focus();}catch(err){form.elements.password.value='';setRequestMessage('signup',err);}});
 
 $$('.nav-item').forEach(btn=>btn.addEventListener('click',()=>switchView(btn.dataset.view)));
 $$('[data-go]').forEach(btn=>btn.addEventListener('click',()=>switchView(btn.dataset.go)));
