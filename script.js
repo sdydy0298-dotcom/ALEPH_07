@@ -435,7 +435,71 @@ function renderTasks() {
   state.allTasks.forEach(t=>{const o=el('option','',`${t.title} · ${t.plan_title||planTitle(t.plan_id)}`);o.value=t.id;exSelect.append(o);});
 }
 
+// Calendar-day totals use the user's Korean local dates; days without logs count as zero.
+function periodKstDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(date);
+}
+function renderPeriodStatistics() {
+  const start = $('#periodStartDate')?.value || '';
+  const end = $('#periodEndDate')?.value || '';
+  const rows = $('#periodDailyRows');
+  if (!rows) return;
+  clear(rows);
+  const note = $('#periodStatsMessage');
+  const reset = (message) => {
+    $('#periodTotalMinutes').textContent = '0분';
+    $('#periodAvgMinutes').textContent = '0.0분';
+    $('#periodLogCount').textContent = '0건';
+    $('#periodDayCount').textContent = '0일';
+    note.textContent = message;
+  };
+  if (!start || !end) { reset('시작 날짜와 종료 날짜를 선택해 주세요.'); return; }
+  if (start > end) { reset('종료 날짜는 시작 날짜보다 빠를 수 없습니다.'); return; }
+  const from = Date.parse(start + 'T00:00:00Z');
+  const to = Date.parse(end + 'T00:00:00Z');
+  if (!Number.isFinite(from) || !Number.isFinite(to)) { reset('유효한 날짜를 선택해 주세요.'); return; }
+  const days = Math.round((to - from) / 86400000) + 1;
+  if (days > 366) { reset('집계 기간은 최대 366일까지 선택할 수 있습니다.'); return; }
+  const totals = new Map();
+  const logs = state.executions.filter(log => {
+    const date = periodKstDate(log.started_at);
+    if (date < start || date > end) return false;
+    const minutes = Math.max(0, Number(log.actual_minutes) || 0);
+    totals.set(date, (totals.get(date) || 0) + minutes);
+    return true;
+  });
+  const total = Array.from(totals.values()).reduce((sum, n) => sum + n, 0);
+  $('#periodTotalMinutes').textContent = total + '분';
+  $('#periodAvgMinutes').textContent = (total / days).toFixed(1) + '분';
+  $('#periodLogCount').textContent = logs.length + '건';
+  $('#periodDayCount').textContent = days + '일';
+  note.textContent = '선택한 계획 기준 · 한국 시간(KST) · 기록 없는 날짜는 0분 포함 · 일평균 = 총 작업 시간 ÷ 선택 기간 일수';
+  for (let time = from; time <= to; time += 86400000) {
+    const date = new Date(time).toISOString().slice(0, 10);
+    const item = el('div', 'period-daily-row');
+    item.append(el('span', '', date), el('strong', '', (totals.get(date) || 0) + '분'));
+    rows.append(item);
+  }
+}
+function setupPeriodStatistics() {
+  const start = $('#periodStartDate'), end = $('#periodEndDate');
+  if (!start || !end) return;
+  // Default to the most recent five days with a log for the selected plan.
+  const dates = [...new Set(state.executions.map(x => periodKstDate(x.started_at)).filter(Boolean))].sort();
+  if (!start.value && !end.value) {
+    const last = dates.at(-1) || kstToday();
+    const endMs = Date.parse(last + 'T00:00:00Z');
+    start.value = new Date(endMs - 4 * 86400000).toISOString().slice(0, 10);
+    end.value = last;
+  }
+  renderPeriodStatistics();
+}
+
 function renderReview() {
+  setupPeriodStatistics();
   const m=state.review?.metrics||{task_count:0,completed_count:0,delayed_count:0,blocked_count:0,estimated_minutes:0,actual_minutes:0,delta_minutes:0};
   const rate=percentage(Number(m.completed_count),Number(m.task_count));
   $('#seeCompletion').textContent=`${rate}%`;$('#seeCompletionSub').textContent=`${m.completed_count} / ${m.task_count}`;
@@ -824,6 +888,8 @@ $('#createPlanFromReviewBtn').addEventListener('click',()=>{const memo=$('#impro
 $('#logoutBtn').addEventListener('click',async()=>{try{await api('/api/auth?action=logout',{method:'POST'});}catch{}showAuth();toast('로그아웃했습니다.');});
 $('#passwordForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('password');const form=e.currentTarget;const b=formDataObject(form);const passwordFailure=validatePasswordValue(b.newPassword);if(passwordFailure){setMessage('password',passwordFailure,'failure');return;}if(b.currentPassword===b.newPassword){setMessage('password','새 비밀번호는 기존 비밀번호와 달라야 합니다.','failure');return;}try{const r=await api('/api/auth?action=password',{method:'PATCH',body:b});form.reset();setMessage('password',r.message,'success');toast('비밀번호를 변경했습니다.');}catch(err){setRequestMessage('password',err);}});
 $('#deleteAccountForm').addEventListener('submit',async e=>{e.preventDefault();setMessage('delete');if(!confirm('계정과 모든 기록을 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.'))return;try{await api('/api/auth?action=account',{method:'DELETE',body:formDataObject(e.currentTarget)});showAuth();toast('계정을 삭제했습니다.');}catch(err){setRequestMessage('delete',err);}});
+$('#periodStartDate').addEventListener('change', renderPeriodStatistics);
+$('#periodEndDate').addEventListener('change', renderPeriodStatistics);
 $('#exportBtn').addEventListener('click',async()=>{try{const response=await fetch('/api/export');if(!response.ok){const d=await response.json();const detail=d?.failure||d?.error;const err=new Error(detail?.message||'내보내기 실패');err.kind=d?.kind||(response.status>=500?'error':'failure');throw err;}const blob=await response.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`plandosee-export-${kstToday()}.json`;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);toast('내보내기 파일을 만들었습니다.');}catch(e){toast(e.message,requestTone(e));}});
 
 window.addEventListener('keydown',e=>{if(e.key==='Escape')$('#appShell').classList.remove('menu-open');});
