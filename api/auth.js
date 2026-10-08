@@ -1,4 +1,4 @@
-import { query, withTransaction } from './_lib/db.js';
+import { query } from './_lib/db.js';
 import {
   clearSessionCookie,
   createSession,
@@ -32,17 +32,13 @@ async function signup(req, res) {
 
   try {
     const passwordHash = await hashPassword(password);
-    const user = await withTransaction(async (client) => {
-      const created = await client.query(
-        `INSERT INTO app_users (email, display_name, password_hash)
-         VALUES ($1, $2, $3)
-         RETURNING id, email, display_name, created_at`,
-        [email, displayName, passwordHash]
-      );
-      await createSession(req, res, created.rows[0].id, client);
-      return created.rows[0];
-    });
-    return json(res, 201, { ok: true, user });
+    const created = await query(
+      `INSERT INTO app_users (email, display_name, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id, email, display_name, created_at`,
+      [email, displayName, passwordHash]
+    );
+    return json(res, 201, { ok: true, user: created.rows[0] });
   } catch (e) {
     if (e?.code === '23505') return failure(res, 409, 'EMAIL_EXISTS', '이미 사용 중인 이메일입니다.');
     console.error(e);
