@@ -284,3 +284,5 @@ html{scrollbar-gutter:stable}
   .account-delete-form{flex:1 1 100%;justify-content:stretch}
   .account-delete-form input{max-width:none}
 }
+
+.account-settings:not([open]){display:none}
