@@ -285,4 +285,3 @@ html{scrollbar-gutter:stable}
   .account-delete-form input{max-width:none}
 }
 
-.account-settings:not([open]){display:none}
